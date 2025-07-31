@@ -34,12 +34,8 @@ namespace BankAccounts.Features.Transactions
         [HttpPost]
         public async Task<IActionResult> RegisterTransaction([FromBody] TransactionCreateDto createDto)
         {
-            var transactionDto = await _mediator.Send(new CreateTransactionCommand(createDto));
-            if (transactionDto == null)
-            {
-                return BadRequest("Ошибка при создании транзакции.");
-            }
-            return Ok(transactionDto);
+            var result = await _mediator.Send(new CreateTransactionCommand(createDto));
+            return Ok(result);
         }
 
         /// <summary>

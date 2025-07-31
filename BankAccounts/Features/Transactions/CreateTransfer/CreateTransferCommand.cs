@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Features.Transactions.DTOs;
 
 namespace BankAccounts.Features.Transactions.CreateTransfer
@@ -9,5 +10,5 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
     /// <param name="TransactionDto">Данные транзакции для создания перевода.</param>
     public record CreateTransferCommand(
         TransactionCreateDto TransactionDto)
-        : ICommand<TransactionDto?>;
+        : ICommand<MbResult<TransactionDto?>>;
 }

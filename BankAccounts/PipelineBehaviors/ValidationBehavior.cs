@@ -1,6 +1,8 @@
 ﻿using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using FluentValidation;
 using MediatR;
+using System.Reflection;
 
 namespace BankAccounts.PipelineBehaviors
 {
@@ -50,7 +52,41 @@ namespace BankAccounts.PipelineBehaviors
 
             if (failures.Count != 0)
             {
-                throw new ValidationException(failures);
+                var error = failures
+                    .GroupBy(f => f.PropertyName)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(f => f.ErrorMessage).ToArray()
+                    );
+
+                //  Проверяем, что возвращаемый тип является generic и MbResult
+                if (typeof(TResponse).IsGenericType &&
+                    typeof(TResponse).GetGenericTypeDefinition() == typeof(MbResult<>))
+                {
+                    // Получаем тип, который используется в generic
+                    var innerType = typeof(TResponse).GetGenericArguments()[0];
+
+                    // Получаем тип MbResult<T> с подставленным T
+                    var resultType = typeof(MbResult<>).MakeGenericType(innerType);
+
+                    // Ищем метод с указным именем и флагами
+                    var method = resultType
+                        .GetMethod(nameof(MbResult<object>.ValidatorError), BindingFlags.Public | BindingFlags.Static);
+
+                    // Если такой метод не найден выбрасываем ошибку
+                    if (method == null)
+                    {
+                        throw new InvalidOperationException("Метод ValidatorError не найден.");
+                    }
+
+                    // Получаем статический объект типа MbResult<T>.ValidatorError
+                    var result = method.Invoke(null, new object[] { error, StatusCodes.Status422UnprocessableEntity});
+
+                    return (TResponse)result!;
+                }
+
+
+                throw new ValidationException("Валидация не поддерживается для типа: " + typeof(TResponse).Name);
             }
 
             return await next(cancellationToken);

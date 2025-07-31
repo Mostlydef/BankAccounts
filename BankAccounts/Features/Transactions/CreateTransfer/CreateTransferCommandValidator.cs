@@ -31,10 +31,14 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                 })
                 .WithMessage("Дебетовый счет с указанным идентификатором не найден или уже закрыт.");
             // Проверка существования и открытости счета контрагента
-            RuleFor(x => x.TransactionDto.AccountId)
+            RuleFor(x => x.TransactionDto.CounterpartyAccountId)
                 .MustAsync(async (accountId, ct) =>
                 {
-                    var account = await accountRepository.GetByIdAsync(accountId, ct);
+                    if (!accountId.HasValue)
+                    {
+                        return false;
+                    }
+                    var account = await accountRepository.GetByIdAsync(accountId.Value, ct);
                     return account != null && account.CloseDate == null;
                 })
                 .WithMessage("Кредитовый счет с указанным идентификатором не найден или уже закрыт.");

@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Features.Transactions.DTOs;
 
 namespace BankAccounts.Features.Transactions.CreateTransaction
@@ -7,5 +8,5 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
     /// Команда для создания простой транзакции (ввод или снятие средств).
     /// </summary>
     /// <param name="TransactionDto">Данные транзакции для создания.</param>
-    public record CreateTransactionCommand(TransactionCreateDto TransactionDto) : ICommand<TransactionDto?>;
+    public record CreateTransactionCommand(TransactionCreateDto TransactionDto) : ICommand<MbResult<TransactionDto?>>;
 }

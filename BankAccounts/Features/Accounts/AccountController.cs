@@ -1,4 +1,5 @@
-﻿using BankAccounts.Features.Accounts.CreateAccount;
+﻿using BankAccounts.Common.Results;
+using BankAccounts.Features.Accounts.CreateAccount;
 using BankAccounts.Features.Accounts.DeleteAccount;
 using BankAccounts.Features.Accounts.DTOs;
 using BankAccounts.Features.Accounts.GetAccount;
@@ -38,8 +39,9 @@ namespace BankAccounts.Features.Accounts
         [HttpPost]
         public async Task<IActionResult> CreateAccount([FromBody] AccountCreateDto dto)
         {
-            var accountDto = await _mediator.Send(new CreateAccountCommand(dto));
-            return CreatedAtAction(nameof(GetById), new { id = accountDto.Id }, accountDto);
+            var result = await _mediator.Send(new CreateAccountCommand(dto));
+
+            return CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result.Value);
         }
 
         /// <summary>

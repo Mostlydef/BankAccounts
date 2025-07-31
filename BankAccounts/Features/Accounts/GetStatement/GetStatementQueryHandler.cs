@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Accounts.DTOs;
 using BankAccounts.Features.Transactions.DTOs;
@@ -9,7 +10,7 @@ namespace BankAccounts.Features.Accounts.GetStatement
     /// <summary>
     /// Обработчик запроса для получения выписки по счету за указанный период.
     /// </summary>
-    public class GetStatementQueryHandler : IQueryHandler<GetStatementQuery, StatementDto?>
+    public class GetStatementQueryHandler : IQueryHandler<GetStatementQuery, MbResult<StatementDto?>>
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IMapper _mapper;
@@ -31,11 +32,11 @@ namespace BankAccounts.Features.Accounts.GetStatement
         /// <param name="request">Запрос с параметрами: идентификатор счета, дата начала и окончания периода.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>Выписка по счету с транзакциями за период или null, если счет не найден.</returns>
-        public async Task<StatementDto?> Handle(GetStatementQuery request, CancellationToken cancellationToken)
+        public async Task<MbResult<StatementDto?>> Handle(GetStatementQuery request, CancellationToken cancellationToken)
         {
             var account = await _accountRepository.GetByIdAsync(request.Id, cancellationToken);
             if (account == null)
-                return null;
+                return MbResult<StatementDto?>.NotFound("Счет не найден.");
 
             var transactions = await _accountRepository.GetTransactions(request.Id, request.From, request.To);
 
@@ -48,7 +49,7 @@ namespace BankAccounts.Features.Accounts.GetStatement
                 TransactionsDto = transactionsDto
             };
 
-            return statementDto;
+            return MbResult<StatementDto?>.Success(statementDto);
         }
     }
 }

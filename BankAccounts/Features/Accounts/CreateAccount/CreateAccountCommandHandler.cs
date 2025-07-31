@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Accounts.DTOs;
 
@@ -8,7 +9,7 @@ namespace BankAccounts.Features.Accounts.CreateAccount
     /// <summary>
     /// Обработчик команды создания нового аккаунта.
     /// </summary>
-    public class CreateAccountCommandHandler : ICommandHandler<CreateAccountCommand, AccountDto>
+    public class CreateAccountCommandHandler : ICommandHandler<CreateAccountCommand, MbResult<AccountDto>>
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IMapper _mapper;
@@ -30,12 +31,15 @@ namespace BankAccounts.Features.Accounts.CreateAccount
         /// <param name="request">Команда создания аккаунта с данными для создания.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>DTO созданного аккаунта.</returns>
-        public async Task<AccountDto> Handle(CreateAccountCommand request, CancellationToken cancellationToken)
+        public async Task<MbResult<AccountDto>> Handle(CreateAccountCommand request, CancellationToken cancellationToken)
         {
             var account = _mapper.Map<Account>(request.CreateDto);
 
             await _accountRepository.AddAsync(account);
-            return _mapper.Map<AccountDto>(account);
+
+            var dto = _mapper.Map<AccountDto>(account);
+
+            return MbResult<AccountDto>.Success(dto);
         }
     }
 }

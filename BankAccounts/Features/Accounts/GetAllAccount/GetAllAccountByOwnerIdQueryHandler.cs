@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Accounts.DTOs;
 
@@ -8,7 +9,7 @@ namespace BankAccounts.Features.Accounts.GetAllAccount
     /// <summary>
     /// Обработчик запроса получения всех счетов по идентификатору владельца.
     /// </summary>
-    public class GetAllAccountByOwnerIdQueryHandler : IQueryHandler<GetAllAccountByOwnerIdQuery, List<AccountDto>>
+    public class GetAllAccountByOwnerIdQueryHandler : IQueryHandler<GetAllAccountByOwnerIdQuery, MbResult<List<AccountDto>>>
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IMapper _mapper;
@@ -30,10 +31,11 @@ namespace BankAccounts.Features.Accounts.GetAllAccount
         /// <param name="request">Запрос, содержащий идентификатор владельца.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>Список DTO счетов, принадлежащих владельцу.</returns>
-        public async Task<List<AccountDto>> Handle(GetAllAccountByOwnerIdQuery request, CancellationToken cancellationToken)
+        public async Task<MbResult<List<AccountDto>>> Handle(GetAllAccountByOwnerIdQuery request, CancellationToken cancellationToken)
         {
-            var result = await _accountRepository.GetByOwnerIdAsync(request.OwnerId);
-            return result.Select(_mapper.Map<AccountDto>).ToList();
+            var list = await _accountRepository.GetByOwnerIdAsync(request.OwnerId);
+            var listDto = list.Select(_mapper.Map<AccountDto>).ToList();
+            return MbResult<List<AccountDto>>.Success(listDto);
         }
     }
 }
