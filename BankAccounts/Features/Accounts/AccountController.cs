@@ -41,7 +41,10 @@ namespace BankAccounts.Features.Accounts
         {
             var result = await _mediator.Send(new CreateAccountCommand(dto));
 
-            return CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result.Value);
+            if (!result.IsSuccess)
+                return BadRequest(MbResult<AccountDto>.BadRequest());
+
+            return CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result);
         }
 
         /// <summary>
