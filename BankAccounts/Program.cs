@@ -44,7 +44,9 @@ namespace BankAccounts
                 config.RegisterServicesFromAssembly(typeof(Program).Assembly));
             builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
             builder.Services.AddTransient<ExceptionHandlingMiddleware>();
-            builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+            builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+            ValidatorOptions.Global.DefaultRuleLevelCascadeMode = CascadeMode.Stop;
+            ValidatorOptions.Global.DefaultClassLevelCascadeMode = CascadeMode.Continue;
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(options =>
             {
