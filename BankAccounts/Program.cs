@@ -31,6 +31,18 @@ namespace BankAccounts
             builder.Services.AddControllers();
             builder.Services.AddOpenApi();
 
+
+            var allowSpecificOrigin = "AllowAll";
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy(allowSpecificOrigin, policy =>
+                {
+                    policy.AllowAnyOrigin()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
+
             builder.Services.AddSingleton<IAccountRepository, AccountRepositoryStub>();
             builder.Services.AddSingleton<ITransactionRepository, TransactionRepositoryStub>();
             builder.Services.AddSingleton<ICurrencyService, CurrencyServiceStub>();
@@ -67,6 +79,7 @@ namespace BankAccounts
             app.UseMiddleware<ExceptionHandlingMiddleware>();
             app.UseHttpsRedirection();
 
+            app.UseCors(allowSpecificOrigin);
             app.UseAuthorization();
 
 
