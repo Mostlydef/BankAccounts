@@ -1,6 +1,9 @@
-BankAccounts API
+# BankAccounts API
 Решение второго задания
-Аутентификация через Keycloak
+---
+
+## Аутентификация через Keycloak
+
 При запуске docker-compose автоматически импортируется realm из папки ./keycloak/import.
 
 Для авторизации в Swagger нажмите "Authorize" (в правом верхнем углу Swagger UI) и введите следующие параметры:
