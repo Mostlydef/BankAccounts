@@ -1,7 +1,9 @@
-﻿using BankAccounts.Features.Transactions.CreateTransaction;
+﻿using BankAccounts.Common.Results;
+using BankAccounts.Features.Transactions.CreateTransaction;
 using BankAccounts.Features.Transactions.CreateTransfer;
 using BankAccounts.Features.Transactions.DTOs;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BankAccounts.Features.Transactions
@@ -9,6 +11,7 @@ namespace BankAccounts.Features.Transactions
     /// <summary>
     /// Контроллер для работы с транзакциями.
     /// </summary>
+    [Authorize]
     [ApiController]
     [Route("[controller]")]
     public class TransactionsController : ControllerBase
@@ -29,9 +32,9 @@ namespace BankAccounts.Features.Transactions
         /// </summary>
         /// <param name="createDto">Данные для создания транзакции.</param>
         /// <returns>Созданная транзакция или ошибка.</returns>
-        /// <response code="200">Успешное создание транзакции.</response>
-        /// <response code="400">Ошибка валидации данных или бизнес-логики.</response>
         [HttpPost]
+        [ProducesResponseType(typeof(MbResult<TransactionDto?>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(MbResult<>), StatusCodes.Status422UnprocessableEntity)]
         public async Task<IActionResult> RegisterTransaction([FromBody] TransactionCreateDto createDto)
         {
             var result = await _mediator.Send(new CreateTransactionCommand(createDto));
@@ -43,9 +46,9 @@ namespace BankAccounts.Features.Transactions
         /// </summary>
         /// <param name="transactionCreateDto">Данные перевода (откуда, куда, сумма, валюта и т.д.).</param>
         /// <returns>Результат перевода (дебет и кредит).</returns>
-        /// <response code="200">Перевод выполнен успешно.</response>
-        /// <response code="400">Ошибка перевода (например, недостаточно средств, неподдерживаемая валюта).</response>
         [HttpPost("Transfer")]
+        [ProducesResponseType(typeof(MbResult<TransactionDto?>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(MbResult<>), StatusCodes.Status422UnprocessableEntity)]
         public async Task<IActionResult> Trasnfer([FromBody] TransactionCreateDto transactionCreateDto)
         {
             var result = await _mediator.Send(new CreateTransferCommand(transactionCreateDto));

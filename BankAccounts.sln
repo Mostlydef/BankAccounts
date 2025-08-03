@@ -5,6 +5,15 @@ VisualStudioVersion = 17.12.35707.178
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankAccounts", "BankAccounts\BankAccounts.csproj", "{B88BA401-CD80-4672-9A3D-C0D1FC806D30}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionItems", "{BCF4AD89-0F4D-4DB7-BBF3-E49923E4D37C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "keycloak", "keycloak", "{18760E7C-463D-4DF0-BEED-E948DAB14C85}"
+	ProjectSection(SolutionItems) = preProject
+		keycloak\import\bankaccounts-realm.json = keycloak\import\bankaccounts-realm.json
+	EndProjectSection
+EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{361C58F3-6FB2-43B8-961F-BFF0B23B6F34}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,8 +24,15 @@ Global
 		{B88BA401-CD80-4672-9A3D-C0D1FC806D30}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B88BA401-CD80-4672-9A3D-C0D1FC806D30}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B88BA401-CD80-4672-9A3D-C0D1FC806D30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{361C58F3-6FB2-43B8-961F-BFF0B23B6F34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{361C58F3-6FB2-43B8-961F-BFF0B23B6F34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{361C58F3-6FB2-43B8-961F-BFF0B23B6F34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{361C58F3-6FB2-43B8-961F-BFF0B23B6F34}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{18760E7C-463D-4DF0-BEED-E948DAB14C85} = {BCF4AD89-0F4D-4DB7-BBF3-E49923E4D37C}
 	EndGlobalSection
 EndGlobal

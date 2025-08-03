@@ -1,4 +1,5 @@
 using BankAccounts.Abstractions.Services;
+using BankAccounts.Configurations;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Database.Repository;
 using BankAccounts.Features.Accounts;
@@ -9,6 +10,10 @@ using BankAccounts.Middlewares;
 using BankAccounts.PipelineBehaviors;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Reflection;
 
 namespace BankAccounts
@@ -27,10 +32,10 @@ namespace BankAccounts
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-
+            IdentityModelEventSource.ShowPII = true;
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole().SetMinimumLevel(LogLevel.Debug);
             builder.Services.AddControllers();
-            builder.Services.AddOpenApi();
-
 
             var allowSpecificOrigin = "AllowAll";
             builder.Services.AddCors(options =>
@@ -64,8 +69,75 @@ namespace BankAccounts
             {
                 var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                var swaggerSettings = builder.Configuration
+                    .GetSection(nameof(SwaggerSettings))
+                    .Get<SwaggerSettings>();
                 options.IncludeXmlComments(xmlPath);
+
+                if (swaggerSettings == null)
+                    throw new InvalidOperationException("Настройки swagger настроены неправильно.");
+                options.AddSecurityDefinition(swaggerSettings.OpenIdScope, new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.OAuth2,
+                    Flows = new OpenApiOAuthFlows
+                    {
+                        Implicit = new OpenApiOAuthFlow
+                        {
+                            AuthorizationUrl = new Uri(swaggerSettings.AuthorizationUrl),
+                            Scopes = new Dictionary<string, string>
+                            {
+                                { swaggerSettings.OpenIdScope, swaggerSettings.OpenIdScope },
+                                { swaggerSettings.ProfileScope, swaggerSettings.ProfileScope }
+                            }
+                        }
+                    },
+                    Description = swaggerSettings.Description
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = swaggerSettings.OpenIdScope
+                            },
+                            In = ParameterLocation.Header,
+                            Name = swaggerSettings.SecurityScheme,
+                            Scheme = swaggerSettings.SecurityScheme
+                        },
+                        []
+                    }
+                });
             });
+
+            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    var jwtSettings = builder.Configuration
+                        .GetSection(nameof(JwtSettings))
+                        .Get<JwtSettings>();
+                    if (jwtSettings == null)
+                        throw new InvalidOperationException("Настройки JWT настроены неправильно.");
+                    options.RequireHttpsMetadata = false;
+                    options.Audience = jwtSettings.Audience;
+                    options.MetadataAddress = jwtSettings.MetadataAddress;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidIssuer = jwtSettings.ValidIssuer,
+                    };
+
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnAuthenticationFailed = context =>
+                        {
+                            Console.WriteLine($"JWT error: {context.Exception.Message}");
+                            return Task.CompletedTask;
+                        }
+                    };
+                });
             var app = builder.Build();
 
             app.UseSwagger();
@@ -75,11 +147,10 @@ namespace BankAccounts
                 options.RoutePrefix = string.Empty;
             });
 
-
             app.UseMiddleware<ExceptionHandlingMiddleware>();
-            app.UseHttpsRedirection();
 
             app.UseCors(allowSpecificOrigin);
+            app.UseAuthentication();
             app.UseAuthorization();
 
 
@@ -87,5 +158,6 @@ namespace BankAccounts
 
             app.Run();
         }
+
     }
 }

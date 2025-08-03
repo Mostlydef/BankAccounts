@@ -2,7 +2,6 @@
 using BankAccounts.Abstractions.CQRS;
 using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
-using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions.DTOs;
 
 namespace BankAccounts.Features.Transactions.CreateTransfer

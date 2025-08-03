@@ -40,7 +40,7 @@
         /// <param name="detail">Подробное описание ошибки.</param>
         /// <param name="code">HTTP-код ошибки. По умолчанию 400.</param>
         /// <returns>Объект <see cref="MbResult{T}"/> с ошибкой.</returns>
-        public static MbResult<T> Failure(string title, string detail, int code = 400)
+        private static MbResult<T> Failure(string title, string detail, int code = 400)
         {
             return new MbResult<T>()
             {
@@ -57,7 +57,7 @@
         /// <summary>
         /// Создаёт результат ошибки валидации с подробной информацией по каждому полю.
         /// </summary>
-        /// <param name="errors">Словарь ошибок, где ключ — имя поля, а значение — список сообщений об ошибках.</param>
+        /// <param name="errors">Словарь ошибок, где ключ имя поля, а значение список сообщений об ошибках.</param>
         /// <param name="code">HTTP-код ошибки. По умолчанию 400.</param>
         /// <returns>Объект <see cref="MbResult{T}"/> с ошибками валидации.</returns>
         public static MbResult<T> ValidatorError(Dictionary<string, string[]> errors, int code = 400)
@@ -92,7 +92,7 @@
         /// <returns>Объект <see cref="MbResult{T}"/> с кодом ошибки 400.</returns>
         public static MbResult<T> BadRequest(string detail = "Неверный запрос.")
         {
-            return Failure("Bad Request", detail, StatusCodes.Status400BadRequest);
+            return Failure("Bad Request", detail);
         }
     }
 }
