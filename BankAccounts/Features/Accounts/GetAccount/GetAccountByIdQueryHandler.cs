@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Accounts.DTOs;
 
@@ -8,7 +9,7 @@ namespace BankAccounts.Features.Accounts.GetAccount
     /// <summary>
     /// Обработчик запроса получения счета по идентификатору.
     /// </summary>
-    public class GetAccountByIdQueryHandler : IQueryHandler<GetAccountByIdQuery, AccountDto?>
+    public class GetAccountByIdQueryHandler : IQueryHandler<GetAccountByIdQuery, MbResult<AccountDto?>>
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IMapper _mapper;
@@ -30,10 +31,11 @@ namespace BankAccounts.Features.Accounts.GetAccount
         /// <param name="request">Запрос с идентификатором счета.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>DTO счета или null, если счет не найден.</returns>
-        public async Task<AccountDto?> Handle(GetAccountByIdQuery request, CancellationToken cancellationToken)
+        public async Task<MbResult<AccountDto?>> Handle(GetAccountByIdQuery request, CancellationToken cancellationToken)
         {
             var account = await _accountRepository.GetByIdAsync(request.AccountId, cancellationToken);
-            return _mapper.Map<AccountDto>(account);
+            var dto = _mapper.Map<AccountDto>(account);
+            return MbResult<AccountDto?>.Success(dto);
         }
     }
 }

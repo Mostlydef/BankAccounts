@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 
 namespace BankAccounts.Features.Accounts.UpdateAccountInterestRate
@@ -6,7 +7,7 @@ namespace BankAccounts.Features.Accounts.UpdateAccountInterestRate
     /// <summary>
     /// Обработчик команды обновления процентной ставки по счету.
     /// </summary>
-    public class UpdateInterestRateCommandHandler : ICommandHandler<UpdateInterestRateCommand, bool>
+    public class UpdateInterestRateCommandHandler : ICommandHandler<UpdateInterestRateCommand, MbResult<bool>>
     {
         private readonly IAccountRepository _accountRepository;
 
@@ -25,17 +26,17 @@ namespace BankAccounts.Features.Accounts.UpdateAccountInterestRate
         /// <param name="request">Команда с данными для обновления ставки.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>Возвращает <c>true</c>, если обновление выполнено успешно; иначе <c>false</c>.</returns>
-        public async Task<bool> Handle(UpdateInterestRateCommand request, CancellationToken cancellationToken)
+        public async Task<MbResult<bool>> Handle(UpdateInterestRateCommand request, CancellationToken cancellationToken)
         {
             var account = await _accountRepository.GetByIdAsync(request.AccountId, cancellationToken);
             if (account == null)
             {
-                return false;
+                return MbResult<bool>.NotFound("Счет не найден.");
             } 
             account.InterestRate = request.InterestRateDto.InterestRate;
 
             await _accountRepository.UpdateAsync(account);
-            return true;
+            return MbResult<bool>.Success(true);
         }
     }
 }

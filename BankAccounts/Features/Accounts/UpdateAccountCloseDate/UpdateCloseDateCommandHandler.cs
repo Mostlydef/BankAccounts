@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 
 namespace BankAccounts.Features.Accounts.UpdateAccountCloseDate
@@ -6,7 +7,7 @@ namespace BankAccounts.Features.Accounts.UpdateAccountCloseDate
     /// <summary>
     /// Обработчик команды обновления даты закрытия счета.
     /// </summary>
-    public class UpdateCloseDateCommandHandler : ICommandHandler<UpdateCloseDateCommand, bool>
+    public class UpdateCloseDateCommandHandler : ICommandHandler<UpdateCloseDateCommand, MbResult<bool>>
     {
         private readonly IAccountRepository _accountRepository;
 
@@ -25,17 +26,17 @@ namespace BankAccounts.Features.Accounts.UpdateAccountCloseDate
         /// <param name="request">Команда с данными обновления.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>Возвращает true, если обновление выполнено успешно, иначе false.</returns>
-        public async Task<bool> Handle(UpdateCloseDateCommand request, CancellationToken cancellationToken)
+        public async Task<MbResult<bool>> Handle(UpdateCloseDateCommand request, CancellationToken cancellationToken)
         {
             var account = await _accountRepository.GetByIdAsync(request.AccountId, cancellationToken);
             if (account == null)
             {
-                return false;
+                return MbResult<bool>.NotFound("Счет не найден.");
             }
 
             account.CloseDate = request.CloseDateDto.CloseDate;
             await _accountRepository.UpdateAsync(account);
-            return true;
+            return MbResult<bool>.Success(true);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 
 namespace BankAccounts.Features.Accounts.DeleteAccount
 {
@@ -6,5 +7,5 @@ namespace BankAccounts.Features.Accounts.DeleteAccount
     /// Команда для удаления аккаунта по идентификатору.
     /// </summary>
     /// <param name="AccountId">Идентификатор аккаунта для удаления.</param>
-    public record DeleteAccountCommand(Guid AccountId) : ICommand<bool>;
+    public record DeleteAccountCommand(Guid AccountId) : ICommand<MbResult<bool>>;
 }

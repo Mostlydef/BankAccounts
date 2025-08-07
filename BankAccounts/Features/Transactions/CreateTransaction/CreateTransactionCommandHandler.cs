@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
 
@@ -8,7 +9,7 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
     /// <summary>
     /// Обработчик команды создания простой транзакции (ввод или снятие средств).
     /// </summary>
-    public class CreateTransactionCommandHandler : ICommandHandler<CreateTransactionCommand, TransactionDto?>
+    public class CreateTransactionCommandHandler : ICommandHandler<CreateTransactionCommand, MbResult<TransactionDto?>>
     {
         private readonly ITransactionRepository _transactionRepository;
         private readonly IAccountRepository _accountRepository;
@@ -34,13 +35,13 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
         /// <param name="request">Команда создания транзакции с данными транзакции.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>DTO созданной транзакции либо <c>null</c>, если операция не удалась.</returns>
-        public async Task<TransactionDto?> Handle(CreateTransactionCommand request, CancellationToken cancellationToken)
+        public async Task<MbResult<TransactionDto?>> Handle(CreateTransactionCommand request, CancellationToken cancellationToken)
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
 
             var account = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
             if (account == null)
-                return null;
+                return MbResult<TransactionDto?>.NotFound("Счет не найден.");
 
             if (transaction.Type == TransactionType.Credit)
                 account.Balance += transaction.Amount;
@@ -53,7 +54,9 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
             await _transactionRepository.RegisterAsync(transaction);
             await _accountRepository.UpdateAsync(account);
 
-            return _mapper.Map<TransactionDto>(transaction);
+            var dto = _mapper.Map<TransactionDto>(transaction);
+
+            return MbResult<TransactionDto?>.Success(dto);
         }
 
     }

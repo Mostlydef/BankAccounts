@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Features.Accounts.DTOs;
 
 namespace BankAccounts.Features.Accounts.UpdateAccountCloseDate
@@ -8,5 +9,5 @@ namespace BankAccounts.Features.Accounts.UpdateAccountCloseDate
     /// </summary>
     /// <param name="AccountId">Идентификатор счета, для которого обновляется дата закрытия.</param>
     /// <param name="CloseDateDto">DTO с новой датой закрытия счета.</param>
-    public record UpdateCloseDateCommand(Guid AccountId, AccountCloseDateDto CloseDateDto) : ICommand<bool>;
+    public record UpdateCloseDateCommand(Guid AccountId, AccountCloseDateDto CloseDateDto) : ICommand<MbResult<bool>>;
 }

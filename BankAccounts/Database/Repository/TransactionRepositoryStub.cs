@@ -1,5 +1,6 @@
 ﻿using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions;
+using JetBrains.Annotations;
 
 namespace BankAccounts.Database.Repository
 {
@@ -35,6 +36,8 @@ namespace BankAccounts.Database.Repository
         /// </summary>
         /// <param name="id">Идентификатор транзакции.</param>
         /// <returns>Transaction, если найдена, иначе null.</returns>
+        /// Аннотация <see cref="UsedImplicitlyAttribute"/> подавляет предупреждения о необходимости использовании метода.
+        [UsedImplicitly]
         public Task<Transaction?> GetById(Guid id)
         {
             var transaction = _stubTransaction.FirstOrDefault(x => x.Id == id);

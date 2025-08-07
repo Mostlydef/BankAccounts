@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BankAccounts.Abstractions.CQRS;
+using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
 
@@ -8,7 +9,7 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
     /// <summary>
     /// Обработчик команды создания перевода между счетами.
     /// </summary>
-    public class CreateTransferCommandHandler : ICommandHandler<CreateTransferCommand, TransactionDto?>
+    public class CreateTransferCommandHandler : ICommandHandler<CreateTransferCommand, MbResult<TransactionDto?>>
     {
         private readonly IAccountRepository _accountRepository;
         private readonly ITransactionRepository _transactionRepository;
@@ -35,19 +36,19 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
         /// <returns>
         /// Объект <see cref="TransactionDto"/> с информацией о связанной транзакции или <c>null</c>, если перевод невозможен.
         /// </returns>
-        public async Task<TransactionDto?> Handle(CreateTransferCommand request, CancellationToken cancellationToken)
+        public async Task<MbResult<TransactionDto?>> Handle(CreateTransferCommand request, CancellationToken cancellationToken)
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
 
             if (transaction.CounterpartyAccountId == null)
-                return null;
+                return MbResult<TransactionDto?>.BadRequest("Контрагент не указан.");
 
             // Получаем счета источника и получателя
             var sourceAccount = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
             var targetAccount = await _accountRepository.GetByIdAsync(transaction.CounterpartyAccountId.Value, cancellationToken);
 
             if (sourceAccount == null || targetAccount == null)
-                return null;
+                return MbResult<TransactionDto?>.NotFound("Счет не найден.");
 
             // Создаем обратную транзакцию для контрагента
             var otherTransaction = new Transaction()
@@ -88,7 +89,9 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
             await _accountRepository.UpdateAsync(sourceAccount);
             await _accountRepository.UpdateAsync(targetAccount);
 
-            return _mapper.Map<TransactionDto>(otherTransaction);
+            var dto = _mapper.Map<TransactionDto>(otherTransaction);
+
+            return MbResult<TransactionDto?>.Success(dto);
         }
     }
 }

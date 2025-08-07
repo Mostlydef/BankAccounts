@@ -1,5 +1,6 @@
 ﻿using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions;
+using JetBrains.Annotations;
 
 namespace BankAccounts.Database.Interfaces
 {
@@ -32,6 +33,8 @@ namespace BankAccounts.Database.Interfaces
         /// <param name="accountId">Идентификатор счета.</param>
         /// <param name="cancellation">Токен отмены операции.</param>
         /// <returns>Объект счета или <c>null</c>, если счет не найден.</returns>
+        /// Аннотация <see cref="UsedImplicitlyAttribute"/> подавляет предупреждения о необходимости использовании cancellation.
+        [UsedImplicitly]
         public Task<Account?> GetByIdAsync(Guid accountId, CancellationToken cancellation);
         /// <summary>
         /// Получает список счетов, принадлежащих определённому владельцу.
