@@ -68,7 +68,6 @@ namespace BankAccounts.Features.Accounts
         /// </summary>
         /// <param name="id">Идентификатор счета.</param>
         /// <returns>Результат удаления.</returns>
-        /// 
         [HttpDelete("{id}")]
         [ProducesResponseType(typeof(MbResult<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(MbResult<>), StatusCodes.Status422UnprocessableEntity)]

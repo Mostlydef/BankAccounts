@@ -76,7 +76,7 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
                         return;
                     }
 
-                    if (type == TransactionType.Debit)
+                    if (type == TransactionType.Credit)
                     {
                         var account = await accountRepository.GetByIdAsync(command.TransactionDto.AccountId, ct);
                         if (account == null)

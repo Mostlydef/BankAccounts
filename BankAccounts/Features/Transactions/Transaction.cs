@@ -43,6 +43,6 @@ namespace BankAccounts.Features.Transactions
         /// <summary>
         /// Счёт, к которому относится транзакция.
         /// </summary>
-        public required Account Account { get; set; }
+        public Account? Account { get; set; }
     }
 }

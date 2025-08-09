@@ -14,6 +14,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "keycloak", "keycloak", "{18
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{361C58F3-6FB2-43B8-961F-BFF0B23B6F34}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "initddb", "initddb", "{742011C7-A9E1-4B97-9E61-3CCF81DFDCA3}"
+	ProjectSection(SolutionItems) = preProject
+		initdb\init_accrue_interest.sql = initdb\init_accrue_interest.sql
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,5 +39,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{18760E7C-463D-4DF0-BEED-E948DAB14C85} = {BCF4AD89-0F4D-4DB7-BBF3-E49923E4D37C}
+		{742011C7-A9E1-4B97-9E61-3CCF81DFDCA3} = {BCF4AD89-0F4D-4DB7-BBF3-E49923E4D37C}
 	EndGlobalSection
 EndGlobal

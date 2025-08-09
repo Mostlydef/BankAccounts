@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Features.Transactions;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace BankAccounts.Database.Interfaces
 {
@@ -13,5 +14,8 @@ namespace BankAccounts.Database.Interfaces
         /// <param name="transaction">Транзакция для регистрации.</param>
         /// <returns>Асинхронная задача.</returns>
         public Task RegisterAsync(Transaction transaction);
+        public Task<Transaction?> GetById(Guid id);
+        public Task<IDbContextTransaction> BeginTransationAsync();
+        public Task SaveChangesAsync();
     }
 }

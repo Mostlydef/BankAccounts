@@ -15,6 +15,8 @@ using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using BankAccounts.Database;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts
 {
@@ -48,8 +50,8 @@ namespace BankAccounts
                 });
             });
 
-            builder.Services.AddSingleton<IAccountRepository, AccountRepositoryStub>();
-            builder.Services.AddSingleton<ITransactionRepository, TransactionRepositoryStub>();
+            builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+            builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
             builder.Services.AddSingleton<ICurrencyService, CurrencyServiceStub>();
             builder.Services.AddSingleton<ICustomerVerificationService, CustomerVerificationServiceStub>();
             builder.Services.AddAutoMapper(cfg =>
@@ -138,7 +140,11 @@ namespace BankAccounts
                         }
                     };
                 });
-            var app = builder.Build();
+
+            builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
+                builder.Configuration.GetConnectionString("DefaultConnection")));
+
+        var app = builder.Build();
 
             app.UseSwagger();
             app.UseSwaggerUI(options =>
@@ -146,6 +152,12 @@ namespace BankAccounts
                 options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
                 options.RoutePrefix = string.Empty;
             });
+
+            // ¬ыполнение миграции при старте контейнера
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Database.Migrate();
+
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 

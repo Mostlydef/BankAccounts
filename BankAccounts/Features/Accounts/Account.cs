@@ -43,6 +43,6 @@ namespace BankAccounts.Features.Accounts
         /// <summary>
         /// Список транзакций, связанных с этим счетом.
         /// </summary>
-        public List<Transaction> Transactions { get; init; } = [];
+        public List<Transaction> Transactions { get; set; } = [];
     }
 }

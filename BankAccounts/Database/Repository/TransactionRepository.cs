@@ -1,6 +1,10 @@
-﻿using BankAccounts.Database.Interfaces;
+﻿using System.Data;
+using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace BankAccounts.Database.Repository
 {
@@ -8,16 +12,16 @@ namespace BankAccounts.Database.Repository
     /// Заглушка (stub) репозитория транзакций для тестирования и разработки.
     /// Хранит транзакции в памяти в списке.
     /// </summary>
-    public class TransactionRepositoryStub : ITransactionRepository
+    public class TransactionRepository : ITransactionRepository
     {
-        private readonly List<Transaction> _stubTransaction;
+        private readonly AppDbContext _context;
 
         /// <summary>
-        /// Инициализирует новый экземпляр <see cref="TransactionRepositoryStub"/>.
+        /// Инициализирует новый экземпляр <see cref="TransactionRepository"/>.
         /// </summary>
-        public TransactionRepositoryStub()
+        public TransactionRepository(AppDbContext context)
         {
-            _stubTransaction = [];
+            _context = context;
         }
 
         /// <summary>
@@ -25,10 +29,9 @@ namespace BankAccounts.Database.Repository
         /// </summary>
         /// <param name="transaction">Транзакция для добавления.</param>
         /// <returns>Асинхронная задача.</returns>
-        public Task RegisterAsync(Transaction transaction)
+        public async Task RegisterAsync(Transaction transaction)
         {
-            _stubTransaction.Add(transaction);
-            return Task.CompletedTask;
+            await _context.Transactions.AddAsync(transaction);
         }
 
         /// <summary>
@@ -38,10 +41,20 @@ namespace BankAccounts.Database.Repository
         /// <returns>Transaction, если найдена, иначе null.</returns>
         /// Аннотация <see cref="UsedImplicitlyAttribute"/> подавляет предупреждения о необходимости использовании метода.
         [UsedImplicitly]
-        public Task<Transaction?> GetById(Guid id)
+        public async Task<Transaction?> GetById(Guid id)
         {
-            var transaction = _stubTransaction.FirstOrDefault(x => x.Id == id);
-            return Task.FromResult(transaction);
+            var transaction = await _context.Transactions.FirstOrDefaultAsync(x => x.Id == id);
+            return transaction;
+        }
+
+        public async Task<IDbContextTransaction> BeginTransationAsync()
+        {
+            return await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        }
+
+        public async Task SaveChangesAsync()
+        {
+            await _context.SaveChangesAsync();
         }
     }
 }

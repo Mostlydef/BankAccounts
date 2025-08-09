@@ -31,6 +31,25 @@ services:
       - ./keycloak/import:/opt/keycloak/data/import
     networks:
       - backend
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: bankdb
+      POSTGRES_USER: bankuser
+      POSTGRES_PASSWORD: bankpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres/initdb:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge
+
+volumes:
+  pgdata:

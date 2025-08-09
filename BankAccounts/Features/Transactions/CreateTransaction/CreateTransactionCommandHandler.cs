@@ -35,24 +35,50 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
         /// <param name="request">Команда создания транзакции с данными транзакции.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>DTO созданной транзакции либо <c>null</c>, если операция не удалась.</returns>
-        public async Task<MbResult<TransactionDto?>> Handle(CreateTransactionCommand request, CancellationToken cancellationToken)
+        public async Task<MbResult<TransactionDto?>> Handle(CreateTransactionCommand request,
+            CancellationToken cancellationToken)
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
 
-            var account = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
-            if (account == null)
-                return MbResult<TransactionDto?>.NotFound("Счет не найден.");
+            await using var tx = await _transactionRepository.BeginTransationAsync();
 
-            if (transaction.Type == TransactionType.Credit)
-                account.Balance += transaction.Amount;
-            else
-                account.Balance -= transaction.Amount;
+            try
+            {
+                var account = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
+                if (account == null)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.NotFound("Счет не найден.");
+                }
 
-            transaction.Account = account;
-            account.Transactions.Add(transaction);
+                var balanceBegin = account.Balance;
 
-            await _transactionRepository.RegisterAsync(transaction);
-            await _accountRepository.UpdateAsync(account);
+                if (transaction.Type == TransactionType.Credit)
+                {
+                    account.Balance -= transaction.Amount;
+                }
+                else
+                {
+                    account.Balance += transaction.Amount;
+                }
+
+                await _transactionRepository.RegisterAsync(transaction);
+
+                if (account.Balance != balanceBegin - transaction.Amount &&
+                    transaction.Type == TransactionType.Credit ||
+                    account.Balance != balanceBegin + transaction.Amount && transaction.Type == TransactionType.Debit)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.BadRequest("Итоговый баланс не соответствует ожиданиям.");
+                }
+
+                await tx.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return MbResult<TransactionDto?>.BadRequest("Ошибка во время выполнения транзакции.");
+            }
 
             var dto = _mapper.Map<TransactionDto>(transaction);
 
