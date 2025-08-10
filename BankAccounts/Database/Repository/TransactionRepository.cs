@@ -1,10 +1,8 @@
-﻿using System.Data;
-using BankAccounts.Database.Interfaces;
+﻿using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Data;
 
 namespace BankAccounts.Database.Repository
 {
@@ -35,23 +33,18 @@ namespace BankAccounts.Database.Repository
         }
 
         /// <summary>
-        /// Получает транзакцию по её идентификатору.
+        /// Сохраняет изменения в контексте базы данных.
         /// </summary>
-        /// <param name="id">Идентификатор транзакции.</param>
-        /// <returns>Transaction, если найдена, иначе null.</returns>
-        /// Аннотация <see cref="UsedImplicitlyAttribute"/> подавляет предупреждения о необходимости использовании метода.
-        [UsedImplicitly]
-        public async Task<Transaction?> GetById(Guid id)
-        {
-            var transaction = await _context.Transactions.FirstOrDefaultAsync(x => x.Id == id);
-            return transaction;
-        }
-
-        public async Task<IDbContextTransaction> BeginTransationAsync()
+        /// <returns>Асинхронная задача.</returns>
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
         {
             return await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         }
 
+        /// <summary>
+        /// Сохраняет изменения в контексте базы данных.
+        /// </summary>
+        /// <returns>Асинхронная задача.</returns>
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();

@@ -3,6 +3,7 @@ using BankAccounts.Abstractions.CQRS;
 using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Features.Transactions.CreateTransfer
 {
@@ -40,7 +41,7 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
             TransactionDto? dto;
-            await using var tx = await _transactionRepository.BeginTransationAsync();
+            await using var tx = await _transactionRepository.BeginTransactionAsync();
             try
             {
                 if (transaction.CounterpartyAccountId == null)
@@ -51,7 +52,8 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
 
                 // Получаем счета источника и получателя
                 var sourceAccount = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
-                var targetAccount = await _accountRepository.GetByIdAsync(transaction.CounterpartyAccountId.Value, cancellationToken);
+                var targetAccount =
+                    await _accountRepository.GetByIdAsync(transaction.CounterpartyAccountId.Value, cancellationToken);
 
                 if (sourceAccount == null || targetAccount == null)
                 {
@@ -68,7 +70,7 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                     Amount = transaction.Amount,
                     Currency = transaction.Currency,
                     Description = transaction.Description,
-                    Timestamp = DateTime.UtcNow, 
+                    Timestamp = DateTime.UtcNow,
                     Type = TransactionType.Credit
                 };
 
@@ -91,22 +93,29 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                 }
 
                 if ((sourceBalanceStart - transaction.Amount != sourceAccount.Balance ||
-                    targetBalanceStart + transaction.Amount != targetAccount.Balance) &&
+                     targetBalanceStart + transaction.Amount != targetAccount.Balance) &&
                     transaction.Type == TransactionType.Credit ||
                     (sourceBalanceStart + transaction.Amount != sourceAccount.Balance ||
-                    targetBalanceStart - transaction.Amount != targetAccount.Balance) &&
+                     targetBalanceStart - transaction.Amount != targetAccount.Balance) &&
                     transaction.Type == TransactionType.Debit)
                 {
                     await tx.RollbackAsync(cancellationToken);
                     return MbResult<TransactionDto?>.BadRequest("Итоговые балансы не соответствуют ожиданиям.");
                 }
+
                 // Привязываем транзакцию к счету источника
                 await _transactionRepository.RegisterAsync(transaction);
                 await _transactionRepository.RegisterAsync(otherTransaction);
                 await _transactionRepository.SaveChangesAsync();
+
                 dto = _mapper.Map<TransactionDto>(otherTransaction);
 
                 await tx.CommitAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return MbResult<TransactionDto?>.Conflict("Данные были изменены другим пользователем.");
             }
             catch (Exception ex)
             {

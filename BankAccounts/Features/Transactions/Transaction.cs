@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Features.Accounts;
+using JetBrains.Annotations;
 
 namespace BankAccounts.Features.Transactions
 {
@@ -42,7 +43,9 @@ namespace BankAccounts.Features.Transactions
 
         /// <summary>
         /// Счёт, к которому относится транзакция.
+        /// Атрибут <see cref="UsedImplicitlyAttribute"/> указывает что это свойство используется косвенно через сериализацию в тестах.
         /// </summary>
+        [UsedImplicitly]
         public Account? Account { get; set; }
     }
 }

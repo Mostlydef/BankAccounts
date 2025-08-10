@@ -3,6 +3,7 @@ using BankAccounts.Abstractions.CQRS;
 using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Features.Transactions.CreateTransaction
 {
@@ -40,7 +41,7 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
 
-            await using var tx = await _transactionRepository.BeginTransationAsync();
+            await using var tx = await _transactionRepository.BeginTransactionAsync();
 
             try
             {
@@ -63,6 +64,7 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
                 }
 
                 await _transactionRepository.RegisterAsync(transaction);
+                await _transactionRepository.SaveChangesAsync();
 
                 if (account.Balance != balanceBegin - transaction.Amount &&
                     transaction.Type == TransactionType.Credit ||
@@ -74,10 +76,15 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
 
                 await tx.CommitAsync(cancellationToken);
             }
-            catch
+            catch (DbUpdateConcurrencyException)
             {
                 await tx.RollbackAsync(cancellationToken);
-                return MbResult<TransactionDto?>.BadRequest("Ошибка во время выполнения транзакции.");
+                return MbResult<TransactionDto?>.Conflict("Данные были изменены другим пользователем.");
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return MbResult<TransactionDto?>.BadRequest(ex.Message);
             }
 
             var dto = _mapper.Map<TransactionDto>(transaction);

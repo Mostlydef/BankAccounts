@@ -4,15 +4,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Database
 {
-    public class AppDbContext : DbContext
+    /// <summary>
+    /// Контекст базы данных для работы с банковскими счетами и транзакциями.
+    /// </summary>
+    public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
-        {
-        }
-
+        /// <summary>
+        /// Контекст базы данных для работы с банковскими счетами и транзакциями.
+        /// </summary>
         public DbSet<Account> Accounts { get; set; }
+        /// <summary>
+        /// Таблица транзакций по счетам.
+        /// </summary>
         public DbSet<Transaction> Transactions { get; set; }
 
+        /// <summary>
+        /// Конфигурация модели данных с настройками сущностей и связей.
+        /// </summary>
+        /// <param name="modelBuilder">Построитель модели для настройки сущностей EF Core.</param>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Account
@@ -30,6 +39,12 @@ namespace BankAccounts.Database
 
                 entity.HasIndex(a => a.OwnerId)
                     .HasMethod("hash");
+
+                entity.Property(a => a.Xmin)
+                    .HasColumnName("xmin")               
+                    .HasColumnType("xid")                
+                    .ValueGeneratedOnAddOrUpdate()       
+                    .IsConcurrencyToken();
             });
 
             // Transaction

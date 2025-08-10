@@ -58,7 +58,7 @@ namespace BankAccounts.Database.Repository
         /// <returns>Account, если найден, иначе null.</returns>
         public async Task<Account?> GetByIdAsync(Guid accountId, CancellationToken cancellation)
         {
-            var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == accountId);
+            var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == accountId, cancellationToken: cancellation);
             return account;
         }
 
@@ -94,9 +94,6 @@ namespace BankAccounts.Database.Repository
         /// <returns>Список транзакций.</returns>
         public async Task<List<Transaction>> GetTransactions(Guid id, DateTime from, DateTime to)
         {
-            var transactions = await _context.Transactions
-                .Where(t => t.AccountId == id)
-                .ToListAsync();
             return await _context.Transactions
                 .Where(t => t.AccountId == id && t.Timestamp >= from.ToUniversalTime() && t.Timestamp <= to.ToUniversalTime())
                 .ToListAsync();

@@ -14,8 +14,16 @@ namespace BankAccounts.Database.Interfaces
         /// <param name="transaction">Транзакция для регистрации.</param>
         /// <returns>Асинхронная задача.</returns>
         public Task RegisterAsync(Transaction transaction);
-        public Task<Transaction?> GetById(Guid id);
-        public Task<IDbContextTransaction> BeginTransationAsync();
+
+        /// <summary>
+        /// Начинает новую транзакцию базы данных.
+        /// </summary>
+        /// <returns>Асинхронная задача с объектом транзакции для управления транзакцией базы данных.</returns>
+        public Task<IDbContextTransaction> BeginTransactionAsync();
+        /// <summary>
+        /// Сохраняет изменения в контексте базы данных.
+        /// </summary>
+        /// <returns>Асинхронная задача, представляющая операцию сохранения изменений.</returns>
         public Task SaveChangesAsync();
     }
 }

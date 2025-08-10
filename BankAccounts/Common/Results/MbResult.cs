@@ -1,4 +1,6 @@
-﻿namespace BankAccounts.Common.Results
+﻿using JetBrains.Annotations;
+
+namespace BankAccounts.Common.Results
 {
     /// <summary>
     /// Обобщённый результат выполнения операции. Содержит либо успешный результат, либо информацию об ошибке.
@@ -8,16 +10,22 @@
     {
         /// <summary>
         /// Показывает, была ли операция успешной.
+        /// Аннотация <c>[UsedImplicitly]</c>  подавляет предупреждение об необходимости изменения set -> init, так как данное свойство используется косвенно в тестах.
         /// </summary>
-        public bool IsSuccess { get; private set; }
+        [UsedImplicitly]
+        public bool IsSuccess { get; set; }
         /// <summary>
         /// Значение, возвращаемое при успешной операции.
+        /// Аннотация <c>[UsedImplicitly]</c>  подавляет предупреждение об необходимости изменения set -> init, так как данное свойство используется косвенно в тестах. 
         /// </summary>
-        public T? Value { get; private set; }
+        [UsedImplicitly]
+        public T? Value { get; set; }
         /// <summary>
         /// Информация об ошибке, если операция завершилась неудачей.
+        /// Аннотация <c>[UsedImplicitly]</c>  подавляет предупреждение об необходимости изменения set -> init, так как данное свойство используется косвенно в тестах. 
         /// </summary>
-        public MbError? Error { get; private set; }
+        [UsedImplicitly]
+        public MbError? Error { get; set; }
 
         /// <summary>
         /// Создаёт успешный результат с переданным значением.
@@ -93,6 +101,16 @@
         public static MbResult<T> BadRequest(string detail = "Неверный запрос.")
         {
             return Failure("Bad Request", detail);
+        }
+
+        /// <summary>
+        /// Создает результат с кодом состояния 409 Conflict и заданным сообщением детали.
+        /// </summary>
+        /// <param name="detail">Описание причины конфликта. По умолчанию: "Неверный запрос."</param>
+        /// <returns>Экземпляр <see cref="MbResult{T}"/>, представляющий ошибку конфликта.</returns>
+        public static MbResult<T> Conflict(string detail = "Неверный запрос.")
+        {
+            return Failure("Conflict", detail, StatusCodes.Status409Conflict);
         }
     }
 }

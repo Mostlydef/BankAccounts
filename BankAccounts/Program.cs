@@ -16,6 +16,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using BankAccounts.Database;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts
@@ -63,6 +65,7 @@ namespace BankAccounts
                 config.RegisterServicesFromAssembly(typeof(Program).Assembly));
             builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
             builder.Services.AddTransient<ExceptionHandlingMiddleware>();
+            builder.Services.AddScoped<InterestService>();
             builder.Services.AddValidatorsFromAssemblyContaining<Program>();
             ValidatorOptions.Global.DefaultRuleLevelCascadeMode = CascadeMode.Stop;
             ValidatorOptions.Global.DefaultClassLevelCascadeMode = CascadeMode.Continue;
@@ -141,10 +144,22 @@ namespace BankAccounts
                     };
                 });
 
-            builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
-                builder.Configuration.GetConnectionString("DefaultConnection")));
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-        var app = builder.Build();
+            builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+
+            if (!builder.Environment.IsEnvironment("Test"))
+            {
+                builder.Services.AddHangfire(config =>
+                    config.UsePostgreSqlStorage(options =>
+                    {
+                        options.UseNpgsqlConnection(connectionString);
+                    }));
+
+                builder.Services.AddHangfireServer();
+            }
+
+            var app = builder.Build();
 
             app.UseSwagger();
             app.UseSwaggerUI(options =>
@@ -158,8 +173,22 @@ namespace BankAccounts
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.Migrate();
 
-
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+            if (!builder.Environment.IsEnvironment("Test"))
+            {
+                var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
+
+                recurringJobManager.AddOrUpdate<InterestService>(
+                    "AccrueInterestJob",
+                    service => service.AccrueInterestForAllAccountAsync(),
+                    Cron.Daily);
+
+                app.UseHangfireDashboard("/hangfire", new DashboardOptions
+                {
+                    Authorization = [new AllowAllAuthorizationFilter()]
+                });
+            }
 
             app.UseCors(allowSpecificOrigin);
             app.UseAuthentication();
