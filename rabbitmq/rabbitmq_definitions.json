@@ -1,0 +1,81 @@
+{
+  "users": [
+    {
+      "name": "admin",
+      "password": "admin",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "permissions": [
+    {
+      "user": "admin",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "account.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true
+    }
+  ],
+  "queues": [
+    {
+      "name": "account.crm",
+      "vhost": "/",
+      "durable": true
+    },
+    {
+      "name": "account.notifications",
+      "vhost": "/",
+      "durable": true
+    },
+    {
+      "name": "account.antifraud",
+      "vhost": "/",
+      "durable": true
+    },
+    {
+      "name": "account.audit",
+      "vhost": "/",
+      "durable": true
+    }
+  ],
+  "bindings": [
+    {
+      "source": "account.events",
+      "vhost": "/",
+      "destination": "account.crm",
+      "destination_type": "queue",
+      "routing_key": "account.*"
+    },
+    {
+      "source": "account.events",
+      "vhost": "/",
+      "destination": "account.notifications",
+      "destination_type": "queue",
+      "routing_key": "money.*"
+    },
+    {
+      "source": "account.events",
+      "vhost": "/",
+      "destination": "account.antifraud",
+      "destination_type": "queue",
+      "routing_key": "client.*"
+    },
+    {
+      "source": "account.events",
+      "vhost": "/",
+      "destination": "account.audit",
+      "destination_type": "queue",
+      "routing_key": "#"
+    }
+  ]
+}
