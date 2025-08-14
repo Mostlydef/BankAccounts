@@ -1,4 +1,5 @@
 ﻿using BankAccounts.Features.Transactions;
+using JetBrains.Annotations;
 
 namespace BankAccounts.Features.Accounts
 {
@@ -42,7 +43,17 @@ namespace BankAccounts.Features.Accounts
 
         /// <summary>
         /// Список транзакций, связанных с этим счетом.
+        /// Атрибут <see cref="UsedImplicitlyAttribute"/> указывает, что это свойство используется косвенно в ORM, даже если в коде прямых обращений нет.
+        /// </summary> 
+        [UsedImplicitly]
+        public List<Transaction> Transactions { get; set; } = [];
+
+        /// <summary>
+        /// Системное поле xmin для версии строки в PostgreSQL.
+        /// Атрибут <see cref="UsedImplicitlyAttribute"/> применяется, поскольку свойство используется косвенно в ORM.
         /// </summary>
-        public List<Transaction> Transactions { get; init; } = [];
+        [UsedImplicitly]
+        public uint Xmin { get; set; }
+
     }
 }

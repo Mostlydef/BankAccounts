@@ -3,6 +3,7 @@ using BankAccounts.Abstractions.CQRS;
 using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Features.Transactions.CreateTransfer
 {
@@ -39,57 +40,88 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
         public async Task<MbResult<TransactionDto?>> Handle(CreateTransferCommand request, CancellationToken cancellationToken)
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
-
-            if (transaction.CounterpartyAccountId == null)
-                return MbResult<TransactionDto?>.BadRequest("Контрагент не указан.");
-
-            // Получаем счета источника и получателя
-            var sourceAccount = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
-            var targetAccount = await _accountRepository.GetByIdAsync(transaction.CounterpartyAccountId.Value, cancellationToken);
-
-            if (sourceAccount == null || targetAccount == null)
-                return MbResult<TransactionDto?>.NotFound("Счет не найден.");
-
-            // Создаем обратную транзакцию для контрагента
-            var otherTransaction = new Transaction()
+            TransactionDto? dto;
+            await using var tx = await _transactionRepository.BeginTransactionAsync();
+            try
             {
-                Id = Guid.NewGuid(),
-                AccountId = targetAccount.Id,
-                CounterpartyAccountId = transaction.Id,
-                Amount = transaction.Amount,
-                Currency = transaction.Currency,
-                Description = transaction.Description,
-                Timestamp = DateTime.UtcNow,
-                Account = targetAccount,
-                Type = TransactionType.Credit
-            };
+                if (transaction.CounterpartyAccountId == null)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.BadRequest("Контрагент не указан.");
+                }
 
-            // Обновляем балансы счетов в зависимости от типа транзакции
-            if (transaction.Type == TransactionType.Debit)
-            {
-                // Снимаем деньги с источника, добавляем к получателю
-                sourceAccount.Balance -= transaction.Amount;
-                targetAccount.Balance += transaction.Amount;
+                // Получаем счета источника и получателя
+                var sourceAccount = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
+                var targetAccount =
+                    await _accountRepository.GetByIdAsync(transaction.CounterpartyAccountId.Value, cancellationToken);
+
+                if (sourceAccount == null || targetAccount == null)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.NotFound("Счет не найден.");
+                }
+
+                // Создаем обратную транзакцию для контрагента
+                var otherTransaction = new Transaction()
+                {
+                    Id = Guid.NewGuid(),
+                    AccountId = targetAccount.Id,
+                    CounterpartyAccountId = sourceAccount.Id,
+                    Amount = transaction.Amount,
+                    Currency = transaction.Currency,
+                    Description = transaction.Description,
+                    Timestamp = DateTime.UtcNow,
+                    Type = TransactionType.Credit
+                };
+
+                var sourceBalanceStart = sourceAccount.Balance;
+                var targetBalanceStart = targetAccount.Balance;
+
+                // Обновляем балансы счетов в зависимости от типа транзакции
+                if (transaction.Type == TransactionType.Credit)
+                {
+                    // Снимаем деньги с источника, добавляем к получателю
+                    sourceAccount.Balance -= transaction.Amount;
+                    targetAccount.Balance += transaction.Amount;
+                }
+                else
+                {
+                    // Сценарий, когда получатель инициирует зачисление
+                    sourceAccount.Balance += transaction.Amount;
+                    targetAccount.Balance -= transaction.Amount;
+                    otherTransaction.Type = TransactionType.Debit;
+                }
+
+                if ((sourceBalanceStart - transaction.Amount != sourceAccount.Balance ||
+                     targetBalanceStart + transaction.Amount != targetAccount.Balance) &&
+                    transaction.Type == TransactionType.Credit ||
+                    (sourceBalanceStart + transaction.Amount != sourceAccount.Balance ||
+                     targetBalanceStart - transaction.Amount != targetAccount.Balance) &&
+                    transaction.Type == TransactionType.Debit)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.BadRequest("Итоговые балансы не соответствуют ожиданиям.");
+                }
+
+                // Привязываем транзакцию к счету источника
+                await _transactionRepository.RegisterAsync(transaction);
+                await _transactionRepository.RegisterAsync(otherTransaction);
+                await _transactionRepository.SaveChangesAsync();
+
+                dto = _mapper.Map<TransactionDto>(otherTransaction);
+
+                await tx.CommitAsync(cancellationToken);
             }
-            else if (transaction.Type == TransactionType.Credit)
+            catch (DbUpdateConcurrencyException)
             {
-                // Сценарий, когда получатель инициирует зачисление
-                sourceAccount.Balance += transaction.Amount;
-                targetAccount.Balance -= transaction.Amount;
-                otherTransaction.Type = TransactionType.Debit;
+                await tx.RollbackAsync(cancellationToken);
+                return MbResult<TransactionDto?>.Conflict("Данные были изменены другим пользователем.");
             }
-
-            // Привязываем транзакцию к счету источника
-            transaction.Account = sourceAccount;
-            sourceAccount.Transactions.Add(transaction);
-            targetAccount.Transactions.Add(otherTransaction);
-            // Сохраняем транзакции и обновляем счета
-            await _transactionRepository.RegisterAsync(otherTransaction);
-            await _transactionRepository.RegisterAsync(transaction);
-            await _accountRepository.UpdateAsync(sourceAccount);
-            await _accountRepository.UpdateAsync(targetAccount);
-
-            var dto = _mapper.Map<TransactionDto>(otherTransaction);
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return MbResult<TransactionDto?>.BadRequest(ex.Message);
+            }
 
             return MbResult<TransactionDto?>.Success(dto);
         }

@@ -1,0 +1,79 @@
+﻿using BankAccounts.Features.Accounts;
+using BankAccounts.Features.Transactions;
+using Microsoft.EntityFrameworkCore;
+
+namespace BankAccounts.Database
+{
+    /// <summary>
+    /// Контекст базы данных для работы с банковскими счетами и транзакциями.
+    /// </summary>
+    public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+    {
+        /// <summary>
+        /// Контекст базы данных для работы с банковскими счетами и транзакциями.
+        /// </summary>
+        public DbSet<Account> Accounts { get; set; }
+        /// <summary>
+        /// Таблица транзакций по счетам.
+        /// </summary>
+        public DbSet<Transaction> Transactions { get; set; }
+
+        /// <summary>
+        /// Конфигурация модели данных с настройками сущностей и связей.
+        /// </summary>
+        /// <param name="modelBuilder">Построитель модели для настройки сущностей EF Core.</param>
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            // Account
+            modelBuilder.Entity<Account>(entity =>
+            {
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.Currency)
+                    .HasMaxLength(3)
+                    .IsRequired();
+
+                entity.HasMany(a => a.Transactions)
+                    .WithOne(t => t.Account)
+                    .HasForeignKey(t => t.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(a => a.OwnerId)
+                    .HasMethod("hash");
+
+                entity.Property(a => a.Xmin)
+                    .HasColumnName("xmin")               
+                    .HasColumnType("xid")                
+                    .ValueGeneratedOnAddOrUpdate()       
+                    .IsConcurrencyToken();
+            });
+
+            // Transaction
+            modelBuilder.Entity<Transaction>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+                entity.Property(t => t.Currency)
+                    .HasMaxLength(3)
+                    .IsRequired();
+
+                entity.Property(t => t.Description)
+                    .HasMaxLength(256)
+                    .IsRequired();
+
+                entity.HasOne(t => t.Account)
+                    .WithMany(a => a.Transactions)
+                    .HasForeignKey(t => t.AccountId);
+
+                entity.HasOne<Account>()
+                    .WithMany()
+                    .HasForeignKey(t => t.CounterpartyAccountId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(t => t.Timestamp)
+                    .HasMethod("gist");
+
+                entity.HasIndex(t => new { t.AccountId, t.Timestamp })
+                    .HasDatabaseName("IX_Transactions_AccountId_Timestamp");
+            });
+        }
+    }
+}

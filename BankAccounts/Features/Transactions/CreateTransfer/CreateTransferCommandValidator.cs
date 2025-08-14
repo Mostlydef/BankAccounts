@@ -148,7 +148,7 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                     
 
 
-                    if (type == TransactionType.Debit)
+                    if (type == TransactionType.Credit)
                     {
                         if (sourceAccount.Type == AccountType.Deposit || sourceAccount.Type == AccountType.Credit)
                         {

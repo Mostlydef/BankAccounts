@@ -15,6 +15,10 @@ using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using BankAccounts.Database;
+using Hangfire;
+using Hangfire.PostgreSql;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts
 {
@@ -48,8 +52,8 @@ namespace BankAccounts
                 });
             });
 
-            builder.Services.AddSingleton<IAccountRepository, AccountRepositoryStub>();
-            builder.Services.AddSingleton<ITransactionRepository, TransactionRepositoryStub>();
+            builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+            builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
             builder.Services.AddSingleton<ICurrencyService, CurrencyServiceStub>();
             builder.Services.AddSingleton<ICustomerVerificationService, CustomerVerificationServiceStub>();
             builder.Services.AddAutoMapper(cfg =>
@@ -61,6 +65,7 @@ namespace BankAccounts
                 config.RegisterServicesFromAssembly(typeof(Program).Assembly));
             builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
             builder.Services.AddTransient<ExceptionHandlingMiddleware>();
+            builder.Services.AddScoped<InterestService>();
             builder.Services.AddValidatorsFromAssemblyContaining<Program>();
             ValidatorOptions.Global.DefaultRuleLevelCascadeMode = CascadeMode.Stop;
             ValidatorOptions.Global.DefaultClassLevelCascadeMode = CascadeMode.Continue;
@@ -138,6 +143,22 @@ namespace BankAccounts
                         }
                     };
                 });
+
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+            builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+
+            if (!builder.Environment.IsEnvironment("Test"))
+            {
+                builder.Services.AddHangfire(config =>
+                    config.UsePostgreSqlStorage(options =>
+                    {
+                        options.UseNpgsqlConnection(connectionString);
+                    }));
+
+                builder.Services.AddHangfireServer();
+            }
+
             var app = builder.Build();
 
             app.UseSwagger();
@@ -147,7 +168,27 @@ namespace BankAccounts
                 options.RoutePrefix = string.Empty;
             });
 
+            // ¬ыполнение миграции при старте контейнера
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Database.Migrate();
+
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+            if (!builder.Environment.IsEnvironment("Test"))
+            {
+                var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
+
+                recurringJobManager.AddOrUpdate<InterestService>(
+                    "AccrueInterestJob",
+                    service => service.AccrueInterestForAllAccountAsync(),
+                    Cron.Daily);
+
+                app.UseHangfireDashboard("/hangfire", new DashboardOptions
+                {
+                    Authorization = [new AllowAllAuthorizationFilter()]
+                });
+            }
 
             app.UseCors(allowSpecificOrigin);
             app.UseAuthentication();

@@ -3,6 +3,7 @@ using BankAccounts.Abstractions.CQRS;
 using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Features.Transactions.CreateTransaction
 {
@@ -35,24 +36,56 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
         /// <param name="request">Команда создания транзакции с данными транзакции.</param>
         /// <param name="cancellationToken">Токен отмены операции.</param>
         /// <returns>DTO созданной транзакции либо <c>null</c>, если операция не удалась.</returns>
-        public async Task<MbResult<TransactionDto?>> Handle(CreateTransactionCommand request, CancellationToken cancellationToken)
+        public async Task<MbResult<TransactionDto?>> Handle(CreateTransactionCommand request,
+            CancellationToken cancellationToken)
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
 
-            var account = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
-            if (account == null)
-                return MbResult<TransactionDto?>.NotFound("Счет не найден.");
+            await using var tx = await _transactionRepository.BeginTransactionAsync();
 
-            if (transaction.Type == TransactionType.Credit)
-                account.Balance += transaction.Amount;
-            else
-                account.Balance -= transaction.Amount;
+            try
+            {
+                var account = await _accountRepository.GetByIdAsync(transaction.AccountId, cancellationToken);
+                if (account == null)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.NotFound("Счет не найден.");
+                }
 
-            transaction.Account = account;
-            account.Transactions.Add(transaction);
+                var balanceBegin = account.Balance;
 
-            await _transactionRepository.RegisterAsync(transaction);
-            await _accountRepository.UpdateAsync(account);
+                if (transaction.Type == TransactionType.Credit)
+                {
+                    account.Balance -= transaction.Amount;
+                }
+                else
+                {
+                    account.Balance += transaction.Amount;
+                }
+
+                await _transactionRepository.RegisterAsync(transaction);
+                await _transactionRepository.SaveChangesAsync();
+
+                if (account.Balance != balanceBegin - transaction.Amount &&
+                    transaction.Type == TransactionType.Credit ||
+                    account.Balance != balanceBegin + transaction.Amount && transaction.Type == TransactionType.Debit)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.BadRequest("Итоговый баланс не соответствует ожиданиям.");
+                }
+
+                await tx.CommitAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return MbResult<TransactionDto?>.Conflict("Данные были изменены другим пользователем.");
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return MbResult<TransactionDto?>.BadRequest(ex.Message);
+            }
 
             var dto = _mapper.Map<TransactionDto>(transaction);
 

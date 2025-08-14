@@ -10,23 +10,25 @@ namespace BankAccounts.Common.Results
     {
         /// <summary>
         /// Краткое описание ошибки.
-        /// Аннотация <see cref="UsedImplicitlyAttribute"/> подавляет предупреждение об необходимости использования метода get.
+        /// Аннотация <c>[UsedImplicitly]</c>  подавляет предупреждение об необходимости использования метода get.
         /// </summary>
         [UsedImplicitly]
         public string? Title { get; set; }
         /// <summary>
         /// Код ошибки.
+        /// Аннотация <c>[UsedImplicitly]</c>  подавляет предупреждение об необходимости изменения set -> init, так как данное свойство используется косвенно в тестах.
         /// </summary>
-        public int Code { get; init; }
+        [UsedImplicitly]
+        public int Code { get; set; }
         /// <summary>
         /// Подробное сообщение об ошибке, объясняющее причину.
-        /// Аннотация <see cref="UsedImplicitlyAttribute"/> подавляет предупреждение об необходимости использования метода get. 
+        /// Аннотация <c>[UsedImplicitly]</c> подавляет предупреждение об необходимости использования метода get. 
         /// </summary>
         [UsedImplicitly]
         public required string Detail { get; set; }
         /// <summary>
         /// Коллекция ошибок валидации, где ключ имя свойства, а значение список сообщений об ошибках.
-        /// Аннотация <see cref="UsedImplicitlyAttribute"/> подавляет предупреждение об необходимости использования метода get. 
+        /// Аннотация <c>[UsedImplicitly]</c>  подавляет предупреждение об необходимости использования метода get. 
         /// </summary>
         [UsedImplicitly]
         public Dictionary<string, string[]>? Errors { get; set; }

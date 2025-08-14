@@ -23,7 +23,9 @@ namespace BankAccounts.Features.Accounts.DTOs
 
         /// <summary>
         /// Процентная ставка по счету, если применимо (например, для кредитных счетов).
+        /// Атрибут <see cref="UsedImplicitlyAttribute"/> указывает что это свойство используется косвенно через сериализацию в тестах.
         /// </summary>
+        [UsedImplicitly]
         public decimal? InterestRate { get; set; }
     }
 }
