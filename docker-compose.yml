@@ -16,6 +16,7 @@ services:
     depends_on:
       - keycloak
       - postgres
+      - rabbitmq
     networks:
       - backend
 

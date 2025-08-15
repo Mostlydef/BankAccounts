@@ -50,5 +50,7 @@ namespace BankAccounts.Database.Interfaces
         /// <param name="to">Дата окончания периода.</param>
         /// <returns>Список транзакций в указанном периоде.</returns>
         public Task<List<Transaction>> GetTransactions(Guid id, DateTime from, DateTime to);
+
+        public Task SaveChangesAsync();
     }
 }

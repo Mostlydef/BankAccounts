@@ -1,5 +1,6 @@
 ﻿using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions;
+using BankAccounts.Infrastructure.Messaging;
 using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Database
@@ -17,6 +18,9 @@ namespace BankAccounts.Database
         /// Таблица транзакций по счетам.
         /// </summary>
         public DbSet<Transaction> Transactions { get; set; }
+
+        public DbSet<OutboxMessage> OutboxMessages { get; set; }
+        public DbSet<InboxConsumed> InboxConsumed { get; set; }
 
         /// <summary>
         /// Конфигурация модели данных с настройками сущностей и связей.
@@ -73,6 +77,22 @@ namespace BankAccounts.Database
 
                 entity.HasIndex(t => new { t.AccountId, t.Timestamp })
                     .HasDatabaseName("IX_Transactions_AccountId_Timestamp");
+            });
+
+            modelBuilder.Entity<OutboxMessage>(entity =>
+            {
+                entity.ToTable("outbox_messages");
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.Payload).HasColumnType("jsonb");
+                entity.Property(x => x.Headers).HasColumnType("jsonb");
+                entity.HasIndex(x => new { x.Status, x.NextAttemptAt, x.OccurredAt })
+                    .HasDatabaseName("idx_outbox_pending");
+            });
+
+            modelBuilder.Entity<InboxConsumed>(entity =>
+            {
+                entity.ToTable("inbox_message");
+                entity.HasKey(x => x.MessageId);
             });
         }
     }

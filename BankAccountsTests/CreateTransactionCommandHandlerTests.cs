@@ -4,6 +4,7 @@ using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions;
 using BankAccounts.Features.Transactions.CreateTransaction;
 using BankAccounts.Features.Transactions.DTOs;
+using BankAccounts.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -15,6 +16,7 @@ namespace BankAccountsTests
         private readonly IMapper _mapper;
         private readonly Mock<ITransactionRepository> _transactionRepositoryMock;
         private readonly Mock<IAccountRepository> _accountRepositoryMock;
+        private readonly Mock<IPublishEvent> _publishEventMock;
 
         public CreateTransactionCommandHandlerTests()
         {
@@ -27,6 +29,7 @@ namespace BankAccountsTests
             _mapper = config.CreateMapper();
             _transactionRepositoryMock = new Mock<ITransactionRepository>();
             _accountRepositoryMock = new Mock<IAccountRepository>();
+            _publishEventMock = new Mock<IPublishEvent>();
         }
 
         [Fact]
@@ -52,7 +55,8 @@ namespace BankAccountsTests
             var handler = new CreateTransactionCommandHandler(
                 _transactionRepositoryMock.Object,
                 _accountRepositoryMock.Object,
-                _mapper
+                _mapper,
+                _publishEventMock.Object
             );
 
             // Act
@@ -83,7 +87,8 @@ namespace BankAccountsTests
             var handler = new CreateTransactionCommandHandler(
                 _transactionRepositoryMock.Object,
                 _accountRepositoryMock.Object,
-                _mapper
+                _mapper,
+                _publishEventMock.Object
             );
 
             var cmd = new CreateTransactionCommand(new TransactionCreateDto
@@ -130,7 +135,8 @@ namespace BankAccountsTests
             var handler = new CreateTransactionCommandHandler(
                 _transactionRepositoryMock.Object,
                 _accountRepositoryMock.Object,
-                _mapper
+                _mapper,
+                _publishEventMock.Object
             );
 
             var cmd = new CreateTransactionCommand(new TransactionCreateDto

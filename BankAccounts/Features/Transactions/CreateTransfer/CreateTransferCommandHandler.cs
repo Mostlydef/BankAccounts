@@ -3,6 +3,8 @@ using BankAccounts.Abstractions.CQRS;
 using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
+using BankAccounts.Features.Transactions.Events;
+using BankAccounts.Infrastructure.Messaging;
 using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Features.Transactions.CreateTransfer
@@ -15,6 +17,7 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
         private readonly IAccountRepository _accountRepository;
         private readonly ITransactionRepository _transactionRepository;
         private readonly IMapper _mapper;
+        private readonly IPublishEvent _publishEvent;
 
         /// <summary>
         /// Инициализирует новый экземпляр <see cref="CreateTransferCommandHandler"/>.
@@ -22,11 +25,12 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
         /// <param name="transactionRepository">Репозиторий для работы с транзакциями.</param>
         /// <param name="accountRepository">Репозиторий для работы со счетами.</param>
         /// <param name="mapper">Объект для маппинга между DTO и моделями.</param>
-        public CreateTransferCommandHandler(ITransactionRepository transactionRepository, IAccountRepository accountRepository, IMapper mapper)
+        public CreateTransferCommandHandler(ITransactionRepository transactionRepository, IAccountRepository accountRepository, IMapper mapper, IPublishEvent publishEvent)
         {
             _accountRepository = accountRepository;
             _transactionRepository = transactionRepository;
             _mapper = mapper;
+            _publishEvent = publishEvent;
         }
 
         /// <summary>
@@ -41,6 +45,8 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
             TransactionDto? dto;
+            MoneyCreditedEvent moneyCreditedEvent;
+            MoneyDebitedEvent moneyDebitedEvent;
             await using var tx = await _transactionRepository.BeginTransactionAsync();
             try
             {
@@ -62,7 +68,7 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                 }
 
                 // Создаем обратную транзакцию для контрагента
-                var otherTransaction = new Transaction()
+                var otherTransaction = new Transaction
                 {
                     Id = Guid.NewGuid(),
                     AccountId = targetAccount.Id,
@@ -83,6 +89,26 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                     // Снимаем деньги с источника, добавляем к получателю
                     sourceAccount.Balance -= transaction.Amount;
                     targetAccount.Balance += transaction.Amount;
+                    moneyCreditedEvent = new MoneyCreditedEvent
+                    {
+                        AccountId = transaction.AccountId,
+                        Amount = transaction.Amount,
+                        Currency = transaction.Currency,
+                        EventId = Guid.NewGuid(),
+                        OccurredAt = DateTimeOffset.UtcNow,
+                        OperationId = transaction.Id
+                    };
+                    moneyDebitedEvent = new MoneyDebitedEvent
+                    {
+                        AccountId = otherTransaction.AccountId,
+                        Amount = otherTransaction.Amount,
+                        Currency = otherTransaction.Currency,
+                        EventId = Guid.NewGuid(),
+                        OccurredAt = DateTimeOffset.UtcNow,
+                        OperationId = otherTransaction.Id
+                    };
+                    await _publishEvent.PublishEventAsync(moneyDebitedEvent, otherTransaction.AccountId);
+                    await _publishEvent.PublishEventAsync(moneyCreditedEvent, transaction.AccountId);
                 }
                 else
                 {
@@ -90,6 +116,27 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                     sourceAccount.Balance += transaction.Amount;
                     targetAccount.Balance -= transaction.Amount;
                     otherTransaction.Type = TransactionType.Debit;
+
+                    moneyCreditedEvent = new MoneyCreditedEvent
+                    {
+                        AccountId = otherTransaction.AccountId,
+                        Amount = otherTransaction.Amount,
+                        Currency = otherTransaction.Currency,
+                        EventId = Guid.NewGuid(),
+                        OccurredAt = DateTimeOffset.UtcNow,
+                        OperationId = otherTransaction.Id
+                    };
+                    moneyDebitedEvent = new MoneyDebitedEvent
+                    {
+                        AccountId = transaction.AccountId,
+                        Amount = transaction.Amount,
+                        Currency = transaction.Currency,
+                        EventId = Guid.NewGuid(),
+                        OccurredAt = DateTimeOffset.UtcNow,
+                        OperationId = transaction.Id
+                    };
+                    await _publishEvent.PublishEventAsync(moneyCreditedEvent, otherTransaction.AccountId);
+                    await _publishEvent.PublishEventAsync(moneyDebitedEvent, transaction.AccountId);
                 }
 
                 if ((sourceBalanceStart - transaction.Amount != sourceAccount.Balance ||
@@ -102,6 +149,7 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                     await tx.RollbackAsync(cancellationToken);
                     return MbResult<TransactionDto?>.BadRequest("Итоговые балансы не соответствуют ожиданиям.");
                 }
+
 
                 // Привязываем транзакцию к счету источника
                 await _transactionRepository.RegisterAsync(transaction);

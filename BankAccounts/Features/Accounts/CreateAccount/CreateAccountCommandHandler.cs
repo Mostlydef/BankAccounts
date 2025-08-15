@@ -3,6 +3,8 @@ using BankAccounts.Abstractions.CQRS;
 using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Accounts.DTOs;
+using BankAccounts.Features.Accounts.Events;
+using BankAccounts.Infrastructure.Messaging;
 
 namespace BankAccounts.Features.Accounts.CreateAccount
 {
@@ -13,16 +15,18 @@ namespace BankAccounts.Features.Accounts.CreateAccount
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IMapper _mapper;
+        private readonly IPublishEvent _publishEvent;
 
         /// <summary>
         /// Инициализирует новый экземпляр <see cref="CreateAccountCommandHandler"/>.
         /// </summary>
         /// <param name="repository">Репозиторий для работы с аккаунтами.</param>
         /// <param name="mapper">Автомаппер для преобразования DTO и сущностей.</param>
-        public CreateAccountCommandHandler(IAccountRepository repository, IMapper mapper)
+        public CreateAccountCommandHandler(IAccountRepository repository, IMapper mapper, IPublishEvent publishEvent)
         {
             _accountRepository = repository;
             _mapper = mapper;
+            _publishEvent = publishEvent;
         }
 
         /// <summary>
@@ -36,6 +40,18 @@ namespace BankAccounts.Features.Accounts.CreateAccount
             var account = _mapper.Map<Account>(request.CreateDto);
 
             await _accountRepository.AddAsync(account);
+
+            var accountOpenedEvent = new AccountOpenedEvent
+            {
+                AccountId = account.Id,
+                Currency = account.Currency,
+                OwnerId = account.OwnerId,
+                Type = account.Type.ToString()
+            };
+
+            await _publishEvent.PublishEventAsync(accountOpenedEvent, account.Id);
+
+            await _accountRepository.SaveChangesAsync();
 
             var dto = _mapper.Map<AccountDto>(account);
 

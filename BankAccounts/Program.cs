@@ -1,24 +1,25 @@
 using BankAccounts.Abstractions.Services;
 using BankAccounts.Configurations;
+using BankAccounts.Database;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Database.Repository;
 using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions;
 using BankAccounts.Infrastructure.CurrencyService;
+using BankAccounts.Infrastructure.Messaging;
 using BankAccounts.Infrastructure.VerificationService;
 using BankAccounts.Middlewares;
 using BankAccounts.PipelineBehaviors;
 using FluentValidation;
+using Hangfire;
+using Hangfire.PostgreSql;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
-using BankAccounts.Database;
-using Hangfire;
-using Hangfire.PostgreSql;
-using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts
 {
@@ -151,13 +152,17 @@ namespace BankAccounts
             if (!builder.Environment.IsEnvironment("Test"))
             {
                 builder.Services.AddHangfire(config =>
-                    config.UsePostgreSqlStorage(options =>
-                    {
-                        options.UseNpgsqlConnection(connectionString);
-                    }));
+                    config.UsePostgreSqlStorage(options => { options.UseNpgsqlConnection(connectionString); }));
 
                 builder.Services.AddHangfireServer();
             }
+
+            builder.Services.Configure<RabbitMqSettings>(
+                builder.Configuration.GetSection("RabbitMq"));
+            builder.Services.AddHostedService<OutboxDispatcher>();
+            builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
+            builder.Services.AddHostedService<RabbitMqBackgroundService>();
+            builder.Services.AddScoped<IPublishEvent, PublishEvent>();
 
             var app = builder.Build();
 

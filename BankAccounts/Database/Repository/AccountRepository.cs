@@ -29,7 +29,6 @@ namespace BankAccounts.Database.Repository
         public async Task AddAsync(Account account)
         {
             await _context.Accounts.AddAsync(account);
-            await _context.SaveChangesAsync();
         }
 
         /// <summary>
@@ -97,6 +96,11 @@ namespace BankAccounts.Database.Repository
             return await _context.Transactions
                 .Where(t => t.AccountId == id && t.Timestamp >= from.ToUniversalTime() && t.Timestamp <= to.ToUniversalTime())
                 .ToListAsync();
+        }
+
+        public async Task SaveChangesAsync()
+        {
+            await _context.SaveChangesAsync(CancellationToken.None);
         }
     }
 }
