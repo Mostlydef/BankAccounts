@@ -56,13 +56,13 @@ public class AuditConsumer : BackgroundService
 
     private async Task HandleMessage(AppDbContext context, string payload, Guid messageId, CancellationToken ct)
     {
-        // 1. Проверка идемпотентности
+        // Проверка идемпотентности
         var alreadyProcessed = await context.InboxConsumed.AnyAsync(x =>
             x.MessageId == messageId && x.Handler == nameof(AuditConsumer), ct);
 
         if (alreadyProcessed) return;
 
-        // 2. Записываем событие в audit_events
+        // Записываем событие в audit_events
         var audit = new AuditEvent
         {
             Id = Guid.NewGuid(),
@@ -73,7 +73,7 @@ public class AuditConsumer : BackgroundService
         };
         context.AuditEvents.Add(audit);
 
-        // 3. Записываем в InboxConsumed
+        // Записываем в InboxConsumed
         context.InboxConsumed.Add(new InboxConsumed
         {
             MessageId = messageId,

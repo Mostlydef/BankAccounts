@@ -4,6 +4,7 @@
     {
         public Guid MessageId { get; set; }
         public DateTimeOffset ProcessedAt { get; set; } = DateTimeOffset.UtcNow;
-        public string Handler { get; set; } = default!;
+        public string Handler { get; set; }
+        public int RetryCount { get; set; }
     }
 }

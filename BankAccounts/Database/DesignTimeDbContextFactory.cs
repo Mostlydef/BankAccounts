@@ -9,7 +9,6 @@ namespace BankAccounts.Database
         {
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
 
-            // Здесь укажи строку подключения для миграций
             optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=db;Username=admin;Password=admin");
 
             return new AppDbContext(optionsBuilder.Options);

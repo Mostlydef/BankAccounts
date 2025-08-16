@@ -18,14 +18,13 @@ using Hangfire.PostgreSql;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Reflection;
-using BankAccounts.Infrastructure.Rabbit.PublishEvents;
-using IConnectionFactory = RabbitMQ.Client.IConnectionFactory;
-using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using System.Reflection;
+using IConnectionFactory = RabbitMQ.Client.IConnectionFactory;
 
 namespace BankAccounts
 {
@@ -201,6 +200,7 @@ namespace BankAccounts
             db.Database.Migrate();
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseMiddleware<LoggingMiddleware>();
 
             if (!builder.Environment.IsEnvironment("Test"))
             {
@@ -220,7 +220,6 @@ namespace BankAccounts
             app.UseCors(allowSpecificOrigin);
             app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 

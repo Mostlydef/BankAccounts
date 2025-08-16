@@ -23,6 +23,7 @@ namespace BankAccounts.Database
         public DbSet<OutboxMessage> OutboxMessages { get; set; }
         public DbSet<InboxConsumed> InboxConsumed { get; set; }
         public DbSet<AuditEvent> AuditEvents { get; set; }
+        public DbSet<InboxDeadLetter> InboxDeadLetters { get; set; }
 
         /// <summary>
         /// Конфигурация модели данных с настройками сущностей и связей.
@@ -100,6 +101,12 @@ namespace BankAccounts.Database
             modelBuilder.Entity<AuditEvent>()
                 .ToTable("audit_events")
                 .HasKey(x => x.Id);
+
+            modelBuilder.Entity<InboxDeadLetter>(entity =>
+            {
+                entity.ToTable("inbox_dead_letters");
+                entity.HasKey(x => x.MessageId);
+            });
         }
     }
 }
