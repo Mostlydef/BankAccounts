@@ -55,5 +55,7 @@ namespace BankAccounts.Features.Accounts
         [UsedImplicitly]
         public uint Xmin { get; set; }
 
+        public bool Frozen { get; set; }
+
     }
 }

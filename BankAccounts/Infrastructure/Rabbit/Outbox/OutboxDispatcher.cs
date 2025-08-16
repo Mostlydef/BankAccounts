@@ -1,8 +1,9 @@
-﻿using BankAccounts.Database;
+﻿using System.Text.Json;
+using BankAccounts.Database;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
-namespace BankAccounts.Infrastructure.Messaging
+namespace BankAccounts.Infrastructure.Rabbit.Outbox
 {
     public class OutboxDispatcher : BackgroundService
     {
@@ -33,7 +34,7 @@ namespace BankAccounts.Infrastructure.Messaging
                     // взять пачку сообщений на отправку
                     var now = DateTimeOffset.UtcNow;
                     var candidates = await db.OutboxMessages
-                        .Where(x => x.Status == "Pending" || (x.Status == "Failed" && x.NextAttemptAt <= now))
+                        .Where(x => x.Status == "Pending" || x.Status == "Failed" && x.NextAttemptAt <= now)
                         .OrderBy(x => x.OccurredAt)
                         .Take(BatchSize)
                         .ToListAsync(stoppingToken);

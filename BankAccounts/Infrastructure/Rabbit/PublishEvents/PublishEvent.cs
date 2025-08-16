@@ -1,10 +1,11 @@
 ﻿using BankAccounts.Database;
 using BankAccounts.Features.Accounts.Events;
 using BankAccounts.Features.Transactions.Events;
+using BankAccounts.Infrastructure.Rabbit.Outbox;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
-namespace BankAccounts.Infrastructure.Messaging
+namespace BankAccounts.Infrastructure.Rabbit.PublishEvents
 {
     public class PublishEvent : IPublishEvent
     {

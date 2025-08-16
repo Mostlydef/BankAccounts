@@ -1,4 +1,4 @@
-﻿namespace BankAccounts.Infrastructure.Messaging
+﻿namespace BankAccounts.Infrastructure.Rabbit.PublishEvents
 {
     public class RabbitMqBackgroundService : IHostedService
     {

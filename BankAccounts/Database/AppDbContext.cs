@@ -1,6 +1,7 @@
 ﻿using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions;
-using BankAccounts.Infrastructure.Messaging;
+using BankAccounts.Infrastructure.Rabbit.Consumers;
+using BankAccounts.Infrastructure.Rabbit.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Database
@@ -21,6 +22,7 @@ namespace BankAccounts.Database
 
         public DbSet<OutboxMessage> OutboxMessages { get; set; }
         public DbSet<InboxConsumed> InboxConsumed { get; set; }
+        public DbSet<AuditEvent> AuditEvents { get; set; }
 
         /// <summary>
         /// Конфигурация модели данных с настройками сущностей и связей.
@@ -94,6 +96,10 @@ namespace BankAccounts.Database
                 entity.ToTable("inbox_message");
                 entity.HasKey(x => x.MessageId);
             });
+
+            modelBuilder.Entity<AuditEvent>()
+                .ToTable("audit_events")
+                .HasKey(x => x.Id);
         }
     }
 }

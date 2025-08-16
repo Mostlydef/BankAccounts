@@ -6,7 +6,9 @@ using BankAccounts.Database.Repository;
 using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions;
 using BankAccounts.Infrastructure.CurrencyService;
-using BankAccounts.Infrastructure.Messaging;
+using BankAccounts.Infrastructure.Rabbit.Consumers;
+using BankAccounts.Infrastructure.Rabbit.Outbox;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using BankAccounts.Infrastructure.VerificationService;
 using BankAccounts.Middlewares;
 using BankAccounts.PipelineBehaviors;
@@ -20,6 +22,10 @@ using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
+using IConnectionFactory = RabbitMQ.Client.IConnectionFactory;
+using Microsoft.Extensions.Options;
+using RabbitMQ.Client;
 
 namespace BankAccounts
 {
@@ -159,10 +165,26 @@ namespace BankAccounts
 
             builder.Services.Configure<RabbitMqSettings>(
                 builder.Configuration.GetSection("RabbitMq"));
+
             builder.Services.AddHostedService<OutboxDispatcher>();
             builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
             builder.Services.AddHostedService<RabbitMqBackgroundService>();
             builder.Services.AddScoped<IPublishEvent, PublishEvent>();
+
+            builder.Services.AddSingleton<IConnectionFactory>(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<RabbitMqSettings>>().Value;
+
+                return new ConnectionFactory
+                {
+                    HostName = settings.HostName,
+                    UserName = settings.UserName,
+                    Password = settings.Password,
+                };
+            });
+
+            builder.Services.AddHostedService<AntifraudConsumer>();
+            builder.Services.AddHostedService<AuditConsumer>();
 
             var app = builder.Build();
 

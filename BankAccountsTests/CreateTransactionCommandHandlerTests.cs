@@ -4,7 +4,7 @@ using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions;
 using BankAccounts.Features.Transactions.CreateTransaction;
 using BankAccounts.Features.Transactions.DTOs;
-using BankAccounts.Infrastructure.Messaging;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;

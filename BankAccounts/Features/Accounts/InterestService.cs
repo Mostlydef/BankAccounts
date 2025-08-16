@@ -2,7 +2,7 @@
 using BankAccounts.Database;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Accounts.Events;
-using BankAccounts.Infrastructure.Messaging;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Features.Accounts

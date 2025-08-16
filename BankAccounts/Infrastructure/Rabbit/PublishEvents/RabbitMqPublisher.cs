@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using System.Text;
 
-namespace BankAccounts.Infrastructure.Messaging
+namespace BankAccounts.Infrastructure.Rabbit.PublishEvents
 {
     public class RabbitMqPublisher : IRabbitMqPublisher, IDisposable
     {

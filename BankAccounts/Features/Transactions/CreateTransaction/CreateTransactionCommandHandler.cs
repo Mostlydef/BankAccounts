@@ -4,7 +4,7 @@ using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
 using BankAccounts.Features.Transactions.Events;
-using BankAccounts.Infrastructure.Messaging;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Features.Transactions.CreateTransaction
