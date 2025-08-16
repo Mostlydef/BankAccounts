@@ -97,7 +97,10 @@ namespace BankAccounts.Database.Repository
                 .Where(t => t.AccountId == id && t.Timestamp >= from.ToUniversalTime() && t.Timestamp <= to.ToUniversalTime())
                 .ToListAsync();
         }
-
+        /// <summary>
+        /// Сохраняет все изменения, сделанные в контексте базы данных, асинхронно.
+        /// </summary>
+        /// <returns>Задача, представляющая асинхронную операцию сохранения изменений.</returns>
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync(CancellationToken.None);

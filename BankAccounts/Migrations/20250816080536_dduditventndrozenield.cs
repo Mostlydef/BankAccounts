@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BankAccounts.Migrations
 {
     /// <inheritdoc />
-    public partial class dduditventndrozenield : Migration
+    public partial class AddFrozenAndAuditEvents: Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

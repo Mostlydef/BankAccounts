@@ -22,6 +22,7 @@ namespace BankAccounts.Features.Accounts.CreateAccount
         /// </summary>
         /// <param name="repository">Репозиторий для работы с аккаунтами.</param>
         /// <param name="mapper">Автомаппер для преобразования DTO и сущностей.</param>
+        /// <param name="publishEvent">Сервис для публикации событий (event publishing) после успешного выполнения команды.</param>
         public CreateAccountCommandHandler(IAccountRepository repository, IMapper mapper, IPublishEvent publishEvent)
         {
             _accountRepository = repository;

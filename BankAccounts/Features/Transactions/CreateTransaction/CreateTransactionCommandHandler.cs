@@ -25,6 +25,7 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
         /// <param name="transactionRepository">Репозиторий для работы с транзакциями.</param>
         /// <param name="repository">Репозиторий для работы с банковскими счетами.</param>
         /// <param name="mapper">Автоматический маппер объектов.</param>
+        /// <param name="publishEvent">Сервис для публикации событий (event publishing) после успешного выполнения команды.</param>
         public CreateTransactionCommandHandler(ITransactionRepository transactionRepository, IAccountRepository repository, IMapper mapper, IPublishEvent publishEvent)
         {
             _transactionRepository = transactionRepository;

@@ -19,10 +19,21 @@ namespace BankAccounts.Database
         /// Таблица транзакций по счетам.
         /// </summary>
         public DbSet<Transaction> Transactions { get; set; }
-
+        /// <summary>
+        /// Таблица исходящих сообщений Outbox.
+        /// </summary>
         public DbSet<OutboxMessage> OutboxMessages { get; set; }
+        /// <summary>
+        /// Таблица сообщений, которые уже были обработаны (Inbox) для обеспечения идемпотентности.
+        /// </summary>
         public DbSet<InboxConsumed> InboxConsumed { get; set; }
+        /// <summary>
+        /// Таблица событий аудита.
+        /// </summary>
         public DbSet<AuditEvent> AuditEvents { get; set; }
+        /// <summary>
+        /// Таблица сообщений, которые не удалось обработать (Dead Letters).
+        /// </summary>
         public DbSet<InboxDeadLetter> InboxDeadLetters { get; set; }
 
         /// <summary>
@@ -82,30 +93,67 @@ namespace BankAccounts.Database
                     .HasDatabaseName("IX_Transactions_AccountId_Timestamp");
             });
 
+            // OutboxMessage
             modelBuilder.Entity<OutboxMessage>(entity =>
             {
                 entity.ToTable("outbox_messages");
                 entity.HasKey(x => x.Id);
-                entity.Property(x => x.Payload).HasColumnType("jsonb");
-                entity.Property(x => x.Headers).HasColumnType("jsonb");
+                entity.Property(x => x.Payload)
+                    .HasColumnType("jsonb")
+                    .HasMaxLength(256);
+                entity.Property(x => x.Headers)
+                    .HasColumnType("jsonb")
+                    .HasMaxLength(256);
+                entity.Property(x => x.Type)
+                    .HasMaxLength(100)
+                    .IsRequired();
+                entity.Property(x => x.RoutingKey)
+                    .HasMaxLength(256)
+                    .IsRequired();
+                entity.Property(x => x.Status)
+                    .HasMaxLength(100)
+                    .IsRequired();
                 entity.HasIndex(x => new { x.Status, x.NextAttemptAt, x.OccurredAt })
                     .HasDatabaseName("idx_outbox_pending");
             });
 
+            // InboxConsumed
             modelBuilder.Entity<InboxConsumed>(entity =>
             {
                 entity.ToTable("inbox_message");
                 entity.HasKey(x => x.MessageId);
+                entity.Property(x => x.Handler)
+                    .HasMaxLength(100)
+                    .IsRequired();
             });
 
-            modelBuilder.Entity<AuditEvent>()
-                .ToTable("audit_events")
-                .HasKey(x => x.Id);
+            // AuditEvent
+            modelBuilder.Entity<AuditEvent>(entity =>
+            {
+                entity.ToTable("audit_events")
+                    .HasKey(x => x.Id);
+                entity.Property(x => x.Handler)
+                    .HasMaxLength(100);
+                entity.Property(x => x.Payload)
+                    .HasColumnType("jsonb");
+            });
 
+            // InboxDeadLetter
             modelBuilder.Entity<InboxDeadLetter>(entity =>
             {
                 entity.ToTable("inbox_dead_letters");
                 entity.HasKey(x => x.MessageId);
+                entity.Property(x => x.Handler)
+                    .HasMaxLength(100)
+                    .IsRequired();
+                entity.Property(x => x.Payload)
+                    .HasColumnType("jsonb")
+                    .IsRequired();
+                entity.Property(x => x.Error)
+                    .HasColumnType("text")
+                    .IsRequired();
+                entity.Property(x => x.ReceivedAt)
+                    .IsRequired();
             });
         }
     }

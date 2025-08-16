@@ -20,6 +20,8 @@ namespace BankAccounts.Features.Accounts
         /// Инициализирует новый экземпляр <see cref="InterestService"/>.
         /// </summary>
         /// <param name="context">Контекст базы данных приложения.</param>
+        /// <param name="publishEvent"></param>
+        /// <param name="transactionRepository"></param>
         public InterestService(AppDbContext context, IPublishEvent publishEvent, ITransactionRepository transactionRepository)
         {
             _context = context;
@@ -80,7 +82,7 @@ namespace BankAccounts.Features.Accounts
             catch (Exception e)
             {
                 await tx.RollbackAsync();
-                return MbResult<List<Guid>>.BadRequest("Ошибка при начислении процентов");
+                return MbResult<List<Guid>>.BadRequest(e.Message);
             }
 
             return MbResult<List<Guid>>.Success(accountIds);

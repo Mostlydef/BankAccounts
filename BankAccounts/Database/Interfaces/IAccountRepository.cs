@@ -33,7 +33,7 @@ namespace BankAccounts.Database.Interfaces
         /// <param name="accountId">Идентификатор счета.</param>
         /// <param name="cancellation">Токен отмены операции.</param>
         /// <returns>Объект счета или <c>null</c>, если счет не найден.</returns>
-        /// Аннотация <see cref="UsedImplicitlyAttribute"/> подавляет предупреждения о необходимости использовании cancellation.
+        /// Аннотация UsedImplicitly подавляет предупреждения о необходимости использовании cancellation.
         [UsedImplicitly]
         public Task<Account?> GetByIdAsync(Guid accountId, CancellationToken cancellation);
         /// <summary>
@@ -50,7 +50,10 @@ namespace BankAccounts.Database.Interfaces
         /// <param name="to">Дата окончания периода.</param>
         /// <returns>Список транзакций в указанном периоде.</returns>
         public Task<List<Transaction>> GetTransactions(Guid id, DateTime from, DateTime to);
-
+        /// <summary>
+        /// Сохраняет изменения в базе данных.
+        /// </summary>
+        /// <returns>Количество изменённых записей.</returns>
         public Task SaveChangesAsync();
     }
 }

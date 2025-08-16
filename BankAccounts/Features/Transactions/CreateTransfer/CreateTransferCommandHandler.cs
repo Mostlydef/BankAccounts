@@ -25,6 +25,7 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
         /// <param name="transactionRepository">Репозиторий для работы с транзакциями.</param>
         /// <param name="accountRepository">Репозиторий для работы со счетами.</param>
         /// <param name="mapper">Объект для маппинга между DTO и моделями.</param>
+        /// <param name="publishEvent">Сервис для публикации событий (event publishing) после успешного выполнения команды.</param>
         public CreateTransferCommandHandler(ITransactionRepository transactionRepository, IAccountRepository accountRepository, IMapper mapper, IPublishEvent publishEvent)
         {
             _accountRepository = accountRepository;
