@@ -3,6 +3,8 @@ using BankAccounts.Abstractions.CQRS;
 using BankAccounts.Common.Results;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Features.Transactions.DTOs;
+using BankAccounts.Features.Transactions.Events;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using Microsoft.EntityFrameworkCore;
 
 namespace BankAccounts.Features.Transactions.CreateTransaction
@@ -15,6 +17,7 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
         private readonly ITransactionRepository _transactionRepository;
         private readonly IAccountRepository _accountRepository;
         private readonly IMapper _mapper;
+        private readonly IPublishEvent _publishEvent;
 
         /// <summary>
         /// Инициализирует новый экземпляр <see cref="CreateTransactionCommandHandler"/>.
@@ -22,11 +25,13 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
         /// <param name="transactionRepository">Репозиторий для работы с транзакциями.</param>
         /// <param name="repository">Репозиторий для работы с банковскими счетами.</param>
         /// <param name="mapper">Автоматический маппер объектов.</param>
-        public CreateTransactionCommandHandler(ITransactionRepository transactionRepository, IAccountRepository repository, IMapper mapper)
+        /// <param name="publishEvent">Сервис для публикации событий (event publishing) после успешного выполнения команды.</param>
+        public CreateTransactionCommandHandler(ITransactionRepository transactionRepository, IAccountRepository repository, IMapper mapper, IPublishEvent publishEvent)
         {
             _transactionRepository = transactionRepository;
             _accountRepository = repository;
             _mapper = mapper;
+            _publishEvent = publishEvent;
         }
 
         /// <summary>
@@ -52,15 +57,41 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
                     return MbResult<TransactionDto?>.NotFound("Счет не найден.");
                 }
 
+                if (account.Frozen)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.Conflict($"Данный аккаунт {account.Id} заморожен.");
+                }
+
                 var balanceBegin = account.Balance;
 
                 if (transaction.Type == TransactionType.Credit)
                 {
                     account.Balance -= transaction.Amount;
+                    var moneyCreditedEvent = new MoneyCreditedEvent
+                    {
+                        AccountId = transaction.AccountId,
+                        Amount = transaction.Amount,
+                        Currency = transaction.Currency,
+                        EventId = Guid.NewGuid(),
+                        OccurredAt = DateTimeOffset.UtcNow,
+                        OperationId = transaction.Id
+                    };
+                    await _publishEvent.PublishEventAsync(moneyCreditedEvent, transaction.AccountId);
                 }
                 else
                 {
                     account.Balance += transaction.Amount;
+                    var moneyDebitedEvent = new MoneyDebitedEvent()
+                    {
+                        AccountId = transaction.AccountId,
+                        Amount = transaction.Amount,
+                        Currency = transaction.Currency,
+                        EventId = Guid.NewGuid(),
+                        OccurredAt = DateTimeOffset.UtcNow,
+                        OperationId = transaction.Id
+                    };
+                    await _publishEvent.PublishEventAsync(moneyDebitedEvent, transaction.AccountId);
                 }
 
                 await _transactionRepository.RegisterAsync(transaction);

@@ -38,6 +38,10 @@ namespace BankAccounts.Features.Transactions
         public async Task<IActionResult> RegisterTransaction([FromBody] TransactionCreateDto createDto)
         {
             var result = await _mediator.Send(new CreateTransactionCommand(createDto));
+
+            if (!result.IsSuccess && result.Error != null)
+                return StatusCode(result.Error.Code, result);
+
             return Ok(result);
         }
 
@@ -52,6 +56,10 @@ namespace BankAccounts.Features.Transactions
         public async Task<IActionResult> Trasnfer([FromBody] TransactionCreateDto transactionCreateDto)
         {
             var result = await _mediator.Send(new CreateTransferCommand(transactionCreateDto));
+
+            if (!result.IsSuccess && result.Error != null)
+                return StatusCode(result.Error.Code, result);
+
             return Ok(result);
         }
     }

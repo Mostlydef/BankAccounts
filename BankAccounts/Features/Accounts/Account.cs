@@ -43,17 +43,22 @@ namespace BankAccounts.Features.Accounts
 
         /// <summary>
         /// Список транзакций, связанных с этим счетом.
-        /// Атрибут <see cref="UsedImplicitlyAttribute"/> указывает, что это свойство используется косвенно в ORM, даже если в коде прямых обращений нет.
+        /// Атрибут UsedImplicitly указывает, что это свойство используется косвенно в ORM, даже если в коде прямых обращений нет.
         /// </summary> 
         [UsedImplicitly]
         public List<Transaction> Transactions { get; set; } = [];
 
         /// <summary>
         /// Системное поле xmin для версии строки в PostgreSQL.
-        /// Атрибут <see cref="UsedImplicitlyAttribute"/> применяется, поскольку свойство используется косвенно в ORM.
+        /// Атрибут UsedImplicitly применяется, поскольку свойство используется косвенно в ORM.
         /// </summary>
         [UsedImplicitly]
         public uint Xmin { get; set; }
+        /// <summary>
+        /// Признак замороженного состояния счета.
+        /// Если значение <c>true</c>, операции со счетом запрещены.
+        /// </summary>
+        public bool Frozen { get; set; }
 
     }
 }

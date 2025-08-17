@@ -4,6 +4,7 @@ using BankAccounts.Database;
 using BankAccounts.Features.Accounts.DTOs;
 using BankAccounts.Features.Transactions;
 using BankAccounts.Features.Transactions.DTOs;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -13,7 +14,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Connections;
 using Testcontainers.PostgreSql;
+using Moq;
+using BankAccounts.Infrastructure.Rabbit.Outbox;
 
 namespace BankAccountsTests
 {
@@ -37,7 +41,8 @@ namespace BankAccountsTests
                     builder.UseEnvironment("Test");
                     builder.ConfigureServices(services =>
                     {
-
+                        services.RemoveAll<IRabbitMqPublisher>();
+                        services.RemoveAll<IConnectionFactory>();
                         services.RemoveAll<DbContextOptions<AppDbContext>>();
 
                         services.AddDbContext<AppDbContext>(options =>
@@ -45,6 +50,17 @@ namespace BankAccountsTests
 
                         services.AddAuthentication("TestScheme")
                             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestScheme", _ => { });
+
+                        var rabbitPublisherMock = new Mock<IRabbitMqPublisher>();
+
+                        rabbitPublisherMock.Setup(x => x.PublishRaw(It.IsAny<string>(),
+                                It.IsAny<OutboxMessage>()))
+                            .Returns(Task.CompletedTask);
+
+                        services.AddSingleton(rabbitPublisherMock.Object);
+
+                        var connectionFactoryMock = new Mock<IConnectionFactory>();
+                        services.AddSingleton(connectionFactoryMock.Object);
                     });
                 });
 

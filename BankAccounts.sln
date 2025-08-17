@@ -23,6 +23,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "initdb", "initdb", "{392FA1
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankAccountsTests", "BankAccountsTests\BankAccountsTests.csproj", "{962B0693-2C3A-4044-A37D-454477CFB801}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rabbitmq", "rabbitmq", "{06E3A423-521B-4F3B-9541-C8FE42FEAEB4}"
+	ProjectSection(SolutionItems) = preProject
+		rabbitmq\rabbitmq.conf = rabbitmq\rabbitmq.conf
+		rabbitmq\rabbitmq_definitions.json = rabbitmq\rabbitmq_definitions.json
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -49,5 +55,6 @@ Global
 		{18760E7C-463D-4DF0-BEED-E948DAB14C85} = {BCF4AD89-0F4D-4DB7-BBF3-E49923E4D37C}
 		{742011C7-A9E1-4B97-9E61-3CCF81DFDCA3} = {BCF4AD89-0F4D-4DB7-BBF3-E49923E4D37C}
 		{392FA100-F80A-4097-B521-DA4D48AFF25E} = {742011C7-A9E1-4B97-9E61-3CCF81DFDCA3}
+		{06E3A423-521B-4F3B-9541-C8FE42FEAEB4} = {BCF4AD89-0F4D-4DB7-BBF3-E49923E4D37C}
 	EndGlobalSection
 EndGlobal

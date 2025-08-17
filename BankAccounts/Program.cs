@@ -1,24 +1,32 @@
 using BankAccounts.Abstractions.Services;
 using BankAccounts.Configurations;
+using BankAccounts.Database;
 using BankAccounts.Database.Interfaces;
 using BankAccounts.Database.Repository;
 using BankAccounts.Features.Accounts;
 using BankAccounts.Features.Transactions;
 using BankAccounts.Infrastructure.CurrencyService;
+using BankAccounts.Infrastructure.Rabbit.Consumers;
+using BankAccounts.Infrastructure.Rabbit.Outbox;
+using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using BankAccounts.Infrastructure.VerificationService;
 using BankAccounts.Middlewares;
 using BankAccounts.PipelineBehaviors;
 using FluentValidation;
+using Hangfire;
+using Hangfire.PostgreSql;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RabbitMQ.Client;
 using System.Reflection;
-using BankAccounts.Database;
-using Hangfire;
-using Hangfire.PostgreSql;
-using Microsoft.EntityFrameworkCore;
+using BankAccounts.Infrastructure.Rabbit;
+using IConnectionFactory = RabbitMQ.Client.IConnectionFactory;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 namespace BankAccounts
 {
@@ -78,6 +86,8 @@ namespace BankAccounts
                     .GetSection(nameof(SwaggerSettings))
                     .Get<SwaggerSettings>();
                 options.IncludeXmlComments(xmlPath);
+
+                options.DocumentFilter<EventDocumentFilter>();
 
                 if (swaggerSettings == null)
                     throw new InvalidOperationException("Настройки swagger настроены неправильно.");
@@ -151,15 +161,64 @@ namespace BankAccounts
             if (!builder.Environment.IsEnvironment("Test"))
             {
                 builder.Services.AddHangfire(config =>
-                    config.UsePostgreSqlStorage(options =>
-                    {
-                        options.UseNpgsqlConnection(connectionString);
-                    }));
+                    config.UsePostgreSqlStorage(options => { options.UseNpgsqlConnection(connectionString); }));
 
                 builder.Services.AddHangfireServer();
             }
 
+            builder.Services.Configure<RabbitMqSettings>(
+                builder.Configuration.GetSection("RabbitMq"));
+
+            builder.Services.AddHostedService<OutboxDispatcher>();
+            builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
+            builder.Services.AddHostedService<RabbitMqBackgroundService>();
+            builder.Services.AddScoped<IPublishEvent, PublishEvent>();
+
+            builder.Services.AddSingleton<IConnectionFactory>(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<RabbitMqSettings>>().Value;
+
+                return new ConnectionFactory
+                {
+                    HostName = settings.HostName,
+                    UserName = settings.UserName,
+                    Password = settings.Password,
+                };
+            });
+
+            builder.Services.AddHostedService<AntifraudConsumer>();
+            builder.Services.AddHostedService<AuditConsumer>();
+
+            builder.Services.AddHealthChecks()
+                .AddCheck<RabbitMqHealthCheck>("rabbitmq") 
+                .AddCheck<OutboxHealthCheck>("outbox");   
+
             var app = builder.Build();
+
+            app.MapHealthChecks("/health/live", new HealthCheckOptions
+            {
+                Predicate = _ => false,
+            }).AllowAnonymous();
+
+            app.MapHealthChecks("/health/ready", new HealthCheckOptions
+            {
+                Predicate = _ => true, 
+                ResponseWriter = async (context, report) =>
+                {
+                    context.Response.ContentType = "application/json";
+                    var result = new
+                    {
+                        status = report.Status.ToString(),
+                        checks = report.Entries.Select(e => new
+                        {
+                            name = e.Key,
+                            status = e.Value.Status.ToString(),
+                            description = e.Value.Description
+                        })
+                    };
+                    await context.Response.WriteAsJsonAsync(result);
+                }
+            }).AllowAnonymous();
 
             app.UseSwagger();
             app.UseSwaggerUI(options =>
@@ -174,6 +233,7 @@ namespace BankAccounts
             db.Database.Migrate();
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseMiddleware<LoggingMiddleware>();
 
             if (!builder.Environment.IsEnvironment("Test"))
             {
@@ -193,7 +253,6 @@ namespace BankAccounts
             app.UseCors(allowSpecificOrigin);
             app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 
