@@ -1,6 +1,6 @@
 # BankAccounts API
 
-Решение третьего задания
+Решение четвертого задания
 ---
 
 ## Аутентификация через Keycloak
@@ -18,5 +18,15 @@
 
 - **Username:** `user1`
 - **Password:** `user1`
+ 
+## Hangfire
 
 Для подключения к Dashboard Hangfire используйте:`http://localhost/hangfire`
+
+## RabbitMq
+
+Доступен по `http://localhost:15672`
+
+## Tests
+
+Запуск тестов по пути `./BankAccountsTests` `dotnet test`
