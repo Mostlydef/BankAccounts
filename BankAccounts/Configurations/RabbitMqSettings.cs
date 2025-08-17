@@ -9,21 +9,21 @@
         /// Адрес хоста RabbitMQ.
         /// По умолчанию <c>localhost</c>.
         /// </summary>
-        public string HostName { get; init; } = "localhost";
+        public string HostName { get; set; } = "localhost";
         /// <summary>
         /// Имя пользователя для подключения к RabbitMQ.
         /// По умолчанию <c>admin</c>.
         /// </summary>
-        public string UserName { get; init; } = "admin";
+        public string UserName { get; set; } = "admin";
         /// <summary>
         /// Пароль пользователя для подключения к RabbitMQ.
         /// По умолчанию <c>admin</c>.
         /// </summary>
-        public string Password { get; init; } = "admin";
+        public string Password { get; set; } = "admin";
         /// <summary>
         /// Имя обменника (exchange) RabbitMQ для публикации событий.
         /// По умолчанию <c>account.events</c>.
         /// </summary>
-        public string ExchangeName { get; init; } = "account.events";
+        public string ExchangeName { get; set; } = "account.events";
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace BankAccounts.Features.Accounts.DTOs
+﻿using JetBrains.Annotations;
+
+namespace BankAccounts.Features.Accounts.DTOs
 {
     /// <summary>
     /// DTO для представления информации о счете.
@@ -37,5 +39,12 @@
         /// Дата закрытия счета (если счет закрыт).
         /// </summary>
         public DateTime? CloseDate { get; init; }
+        /// <summary>
+        /// Признак замороженного состояния счета.
+        /// Если значение <c>true</c>, операции со счетом запрещены.
+        /// Свойство необходимо как часть API или DTO контракта
+        /// </summary>
+        [UsedImplicitly]
+        public bool Frozen { get; init; }
     }
 }

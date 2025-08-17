@@ -135,7 +135,8 @@ namespace BankAccounts.Database
                 entity.Property(x => x.Handler)
                     .HasMaxLength(100);
                 entity.Property(x => x.Payload)
-                    .HasColumnType("jsonb");
+                    .HasColumnType("jsonb")
+                    .HasMaxLength(256);
             });
 
             // InboxDeadLetter
@@ -148,9 +149,11 @@ namespace BankAccounts.Database
                     .IsRequired();
                 entity.Property(x => x.Payload)
                     .HasColumnType("jsonb")
+                    .HasMaxLength(256)
                     .IsRequired();
                 entity.Property(x => x.Error)
                     .HasColumnType("text")
+                    .HasMaxLength(256)
                     .IsRequired();
                 entity.Property(x => x.ReceivedAt)
                     .IsRequired();

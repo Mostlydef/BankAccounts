@@ -46,8 +46,6 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
         {
             var transaction = _mapper.Map<Transaction>(request.TransactionDto);
             TransactionDto? dto;
-            MoneyCreditedEvent moneyCreditedEvent;
-            MoneyDebitedEvent moneyDebitedEvent;
             await using var tx = await _transactionRepository.BeginTransactionAsync();
             try
             {
@@ -68,6 +66,17 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                     return MbResult<TransactionDto?>.NotFound("Счет не найден.");
                 }
 
+                if (sourceAccount.Frozen)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.Conflict($"Аккаунт {sourceAccount.Id} заморожен.");
+                }
+                if (targetAccount.Frozen)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.Conflict($"Аккаунт {targetAccount.Id} заморожен.");
+                }
+
                 // Создаем обратную транзакцию для контрагента
                 var otherTransaction = new Transaction
                 {
@@ -85,6 +94,8 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                 var targetBalanceStart = targetAccount.Balance;
 
                 // Обновляем балансы счетов в зависимости от типа транзакции
+                MoneyCreditedEvent moneyCreditedEvent;
+                MoneyDebitedEvent moneyDebitedEvent;
                 if (transaction.Type == TransactionType.Credit)
                 {
                     // Снимаем деньги с источника, добавляем к получателю
@@ -152,13 +163,35 @@ namespace BankAccounts.Features.Transactions.CreateTransfer
                 }
 
 
+                var transactionCompletedSource = new TransferCompletedEvent()
+                {
+                    EventId = Guid.NewGuid(),
+                    DestinationAccountId = otherTransaction.Id,
+                    SourceAccountId = transaction.Id,
+                    TransferId = Guid.NewGuid(),
+                    Amount = transaction.Amount,
+                    Currency = transaction.Currency,
+                    OccurredAt = DateTimeOffset.UtcNow
+                };
+                var transactionCompletedTarget = new TransferCompletedEvent()
+                {
+                    EventId = Guid.NewGuid(),
+                    DestinationAccountId = sourceAccount.Id,
+                    SourceAccountId = otherTransaction.Id,
+                    TransferId = Guid.NewGuid(),
+                    Amount = transaction.Amount,
+                    Currency = transaction.Currency,
+                    OccurredAt = DateTimeOffset.UtcNow
+                };
+                await _publishEvent.PublishEventAsync(transactionCompletedSource, sourceAccount.Id);
+                await _publishEvent.PublishEventAsync(transactionCompletedTarget, targetAccount.Id);
+
                 // Привязываем транзакцию к счету источника
                 await _transactionRepository.RegisterAsync(transaction);
                 await _transactionRepository.RegisterAsync(otherTransaction);
                 await _transactionRepository.SaveChangesAsync();
 
                 dto = _mapper.Map<TransactionDto>(otherTransaction);
-
                 await tx.CommitAsync(cancellationToken);
             }
             catch (DbUpdateConcurrencyException)

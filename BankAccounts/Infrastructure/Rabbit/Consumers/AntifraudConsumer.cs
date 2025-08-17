@@ -59,6 +59,7 @@ namespace BankAccounts.Infrastructure.Rabbit.Consumers
             var consumer = new AsyncEventingBasicConsumer(_channel);
             consumer.ReceivedAsync += async (_, eventArgs) =>
             {
+                _logger.LogInformation("Получено сообщение {DeliveryTag} из очереди {Queue}", eventArgs.DeliveryTag, QueueName);
                 try
                 {
                     // создаём scope, чтобы взять DbContext
@@ -67,14 +68,11 @@ namespace BankAccounts.Infrastructure.Rabbit.Consumers
 
                     // Обрабатываем сообщение
                     await HandleMessage(context, eventArgs);
-
-                    // Подтверждаем успешную обработку
-                    await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Ошибка при обработке сообщения с DeliveryTag {DeliveryTag}", eventArgs.DeliveryTag);
-                    await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, cancellationToken: stoppingToken);
+                    await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
                 }
             };
             // Подписываемся на очередь
@@ -89,8 +87,9 @@ namespace BankAccounts.Infrastructure.Rabbit.Consumers
         /// <param name="eventArgs">Аргументы события RabbitMQ.</param>
         private async Task HandleMessage(AppDbContext context, BasicDeliverEventArgs eventArgs)
         {
+            if (_channel == null)
+                throw new InvalidOperationException("RabbitMQ channel is not initialized");
             var stopwatch = Stopwatch.StartNew();
-
             // Получаем MessageId из свойств RabbitMQ
             var messageIdString = eventArgs.BasicProperties.MessageId;
             if (messageIdString == null)
@@ -118,12 +117,19 @@ namespace BankAccounts.Infrastructure.Rabbit.Consumers
                 await context.SaveChangesAsync();
             }
 
-            // Проверка, было ли сообщение уже обработано 
-            var alreadyProcessed = await context.InboxConsumed
-                .AnyAsync(x => x.MessageId == messageId && x.Handler == nameof(AntifraudConsumer));
-
-            if (alreadyProcessed)
+            if (inbox.ProcessedAt != null)
+            {
+                stopwatch.Stop();
+                _logger.LogInformation("Message already processed {@EventLog}", new
+                {
+                    MessageId = messageId,
+                    inbox.Handler,
+                    inbox.RetryCount,
+                    LatencyMs = stopwatch.ElapsedMilliseconds
+                });
+                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false);
                 return;
+            }
 
             try
             {
@@ -132,38 +138,45 @@ namespace BankAccounts.Infrastructure.Rabbit.Consumers
                 var root = doc.RootElement;
 
                 // Проверяем версию события
-                var version = root.GetProperty("meta").GetProperty("version").GetString();
+                var version = root.GetProperty("Meta").GetProperty("Version").GetString();
                 if (version != "v1")
                     throw new InvalidOperationException($"Unsupported event version: {version}");
+                var headers = eventArgs.BasicProperties.Headers;
+                if (headers == null)
+                    throw new InvalidOperationException($"Unsupported event version: {version}");
 
-                var type = root.GetProperty("meta").GetProperty("type").GetString();
-                if (string.IsNullOrWhiteSpace(type))
-                    throw new InvalidOperationException("Missing event type in envelope");
+                var bytesHeader = headers["X-Event-Type"];
+                if (bytesHeader == null)
+                    throw new InvalidOperationException($"Unsupported event version: {version}");
+
+                var type = Encoding.UTF8.GetString((byte[])bytesHeader);
 
                 // Обработка различных типов событий
                 switch (type)
                 {
                     case nameof(ClientBlockedEvent):
                         {
-                            var payload = root.GetProperty("payload").Deserialize<ClientBlockedEvent>();
+                            var payload = root.GetProperty("Payload").Deserialize<ClientBlockedEvent>();
                             if (payload == null)
                                 throw new InvalidOperationException("Invalid ClientBlockedEvent payload");
 
                             // Блокируем счета клиента
                             var accounts = await context.Accounts.Where(a => a.OwnerId == payload.ClientId).ToListAsync();
-                            foreach (var acc in accounts) acc.Frozen = true;
+                            foreach (var account in accounts)
+                                account.Frozen = true;
                             break;
                         }
 
                     case nameof(ClientUnblockedEvent):
                         {
-                            var payload = root.GetProperty("payload").Deserialize<ClientUnblockedEvent>();
+                            var payload = root.GetProperty("Payload").Deserialize<ClientUnblockedEvent>();
                             if (payload == null)
                                 throw new InvalidOperationException("Invalid ClientUnblockedEvent payload");
 
                             // Разблокируем счета клиента
                             var accounts = await context.Accounts.Where(a => a.OwnerId == payload.ClientId).ToListAsync();
-                            foreach (var acc in accounts) acc.Frozen = false;
+                            foreach (var account in accounts) 
+                                account.Frozen = false;
                             break;
                         }
 
@@ -176,12 +189,14 @@ namespace BankAccounts.Infrastructure.Rabbit.Consumers
                 context.InboxConsumed.Update(inbox);
                 await context.SaveChangesAsync();
 
+                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false);
+
                 stopwatch.Stop();
                 _logger.LogInformation("Consumed event {@EventLog}", new
                 {
                     EventId = messageId,
                     Type = type,
-                    CorrelationId = root.GetProperty("meta").GetProperty("correlationId").GetString(),
+                    CorrelationId = root.GetProperty("Meta").GetProperty("CorrelationId").GetString(),
                     Retry = 0,
                     LatencyMs = stopwatch.ElapsedMilliseconds
                 });
@@ -203,6 +218,7 @@ namespace BankAccounts.Infrastructure.Rabbit.Consumers
                         Payload = payloadJson,
                         Error = e.Message
                     });
+                    context.InboxConsumed.Remove(inbox);
                     await context.SaveChangesAsync();
 
                     if (_channel == null)

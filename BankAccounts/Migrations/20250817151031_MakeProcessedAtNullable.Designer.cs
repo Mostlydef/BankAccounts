@@ -3,6 +3,7 @@ using System;
 using BankAccounts.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BankAccounts.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250817151031_MakeProcessedAtNullable")]
+    partial class MakeProcessedAtNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -130,7 +133,6 @@ namespace BankAccounts.Migrations
 
                     b.Property<string>("Payload")
                         .IsRequired()
-                        .HasMaxLength(256)
                         .HasColumnType("jsonb");
 
                     b.Property<DateTimeOffset>("ReceivedAt")
@@ -171,7 +173,6 @@ namespace BankAccounts.Migrations
 
                     b.Property<string>("Error")
                         .IsRequired()
-                        .HasMaxLength(256)
                         .HasColumnType("text");
 
                     b.Property<string>("Handler")
@@ -181,7 +182,6 @@ namespace BankAccounts.Migrations
 
                     b.Property<string>("Payload")
                         .IsRequired()
-                        .HasMaxLength(256)
                         .HasColumnType("jsonb");
 
                     b.Property<DateTimeOffset>("ReceivedAt")

@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace BankAccounts.Database
@@ -6,7 +7,9 @@ namespace BankAccounts.Database
     /// <summary>
     /// Фабрика для создания экземпляра <see cref="AppDbContext"/> во время проектирования.
     /// Используется инструментами EF Core, например для миграций.
+    /// Класс используется неявно инструментами EF Core
     /// </summary>
+    [UsedImplicitly]
     public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
         /// <summary>

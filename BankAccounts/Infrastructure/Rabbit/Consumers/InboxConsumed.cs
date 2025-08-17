@@ -17,7 +17,7 @@ namespace BankAccounts.Infrastructure.Rabbit.Consumers
         /// Дата и время, когда сообщение было успешно обработано.
         /// По умолчанию устанавливается в <see cref="DateTimeOffset.UtcNow"/>.
         /// </summary>
-        public DateTimeOffset ProcessedAt { get; set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset? ProcessedAt { get; set; }
         /// <summary>
         /// Имя обработчика, который обработал сообщение.
         /// Используется для поддержки нескольких обработчиков одной очереди.

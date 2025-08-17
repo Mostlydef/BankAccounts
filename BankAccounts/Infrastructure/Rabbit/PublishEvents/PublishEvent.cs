@@ -111,6 +111,8 @@ namespace BankAccounts.Infrastructure.Rabbit.PublishEvents
                 MoneyDebitedEvent => "money.debited",
                 TransferCompletedEvent => "money.transfer.completed",
                 InterestAccruedEvent => "money.interest.accrued",
+                ClientBlockedEvent => "client.blocked",
+                ClientUnblockedEvent => "client.unblocked",
                 _ => throw new InvalidOperationException("Unknown event type")
             };
         }

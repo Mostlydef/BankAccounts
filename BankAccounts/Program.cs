@@ -24,7 +24,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RabbitMQ.Client;
 using System.Reflection;
+using BankAccounts.Infrastructure.Rabbit;
 using IConnectionFactory = RabbitMQ.Client.IConnectionFactory;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 namespace BankAccounts
 {
@@ -84,6 +86,8 @@ namespace BankAccounts
                     .GetSection(nameof(SwaggerSettings))
                     .Get<SwaggerSettings>();
                 options.IncludeXmlComments(xmlPath);
+
+                options.DocumentFilter<EventDocumentFilter>();
 
                 if (swaggerSettings == null)
                     throw new InvalidOperationException("Настройки swagger настроены неправильно.");
@@ -185,7 +189,36 @@ namespace BankAccounts
             builder.Services.AddHostedService<AntifraudConsumer>();
             builder.Services.AddHostedService<AuditConsumer>();
 
+            builder.Services.AddHealthChecks()
+                .AddCheck<RabbitMqHealthCheck>("rabbitmq") 
+                .AddCheck<OutboxHealthCheck>("outbox");   
+
             var app = builder.Build();
+
+            app.MapHealthChecks("/health/live", new HealthCheckOptions
+            {
+                Predicate = _ => false,
+            }).AllowAnonymous();
+
+            app.MapHealthChecks("/health/ready", new HealthCheckOptions
+            {
+                Predicate = _ => true, 
+                ResponseWriter = async (context, report) =>
+                {
+                    context.Response.ContentType = "application/json";
+                    var result = new
+                    {
+                        status = report.Status.ToString(),
+                        checks = report.Entries.Select(e => new
+                        {
+                            name = e.Key,
+                            status = e.Value.Status.ToString(),
+                            description = e.Value.Description
+                        })
+                    };
+                    await context.Response.WriteAsJsonAsync(result);
+                }
+            }).AllowAnonymous();
 
             app.UseSwagger();
             app.UseSwaggerUI(options =>

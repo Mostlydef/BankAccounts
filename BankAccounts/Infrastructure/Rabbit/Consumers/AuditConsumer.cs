@@ -45,7 +45,7 @@ public class AuditConsumer : BackgroundService
         var consumer = new AsyncEventingBasicConsumer(_channel);
 
         // Обработчик получения сообщений
-        consumer.ReceivedAsync += async (sender, eventArgs) =>
+        consumer.ReceivedAsync += async (_, eventArgs) =>
         {
             try
             {

@@ -1,8 +1,7 @@
-﻿using System.Diagnostics;
-using System.Text.Json;
-using BankAccounts.Database;
+﻿using BankAccounts.Database;
 using BankAccounts.Infrastructure.Rabbit.PublishEvents;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace BankAccounts.Infrastructure.Rabbit.Outbox
 {
@@ -74,36 +73,12 @@ namespace BankAccounts.Infrastructure.Rabbit.Outbox
                             message.Status = nameof(MessageStatus.Publishing);
                             await db.SaveChangesAsync(stoppingToken);
 
-                            // Достаём заголовки
-                            var headers = JsonSerializer.Deserialize<Dictionary<string, string>>(message.Headers);
-
-                            if (headers == null)
-                                throw new InvalidOperationException($"Outbox message {message.Id} has invalid or missing headers.");
-
-                            var correlationId = headers.GetValueOrDefault("X-Correlation-Id");
-                            var causationId = headers.GetValueOrDefault("X-Causation-Id");
-                            var eventType = headers.GetValueOrDefault("X-Event-Type");
-
-                            // Логируем попытку публикации
-                            _logger.LogInformation("Publishing outbox message {@EventContext}",
-                                new
-                                {
-                                    EventId = message.Id,
-                                    EventType = eventType,
-                                    CorrelationId = correlationId,
-                                    CausationId = causationId,
-                                    Retry = message.Attempts,
-                                    message.Status
-                                });
-
                             // Публикация
                             await _publisher.PublishRaw(
                                 routingKey: message.RoutingKey,
-                                payloadJson: message.Payload,
-                                correlationId: headers.GetValueOrDefault("X-Correlation-Id"),
-                                causationId: headers.GetValueOrDefault("X-Causation-Id"),
-                                messageId: message.Id.ToString() 
+                                message
                             );
+
                             stopwatch.Stop();
                             var latency = stopwatch.ElapsedMilliseconds;
 
@@ -118,8 +93,7 @@ namespace BankAccounts.Infrastructure.Rabbit.Outbox
                                 new
                                 {
                                     EventId = message.Id,
-                                    EventType = eventType,
-                                    CorrelationId = correlationId,
+                                    EventType = message.Type,
                                     Retry = message.Attempts,
                                     LatencyMs = latency
                                 });

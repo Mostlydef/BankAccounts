@@ -57,6 +57,12 @@ namespace BankAccounts.Features.Transactions.CreateTransaction
                     return MbResult<TransactionDto?>.NotFound("Счет не найден.");
                 }
 
+                if (account.Frozen)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return MbResult<TransactionDto?>.Conflict($"Данный аккаунт {account.Id} заморожен.");
+                }
+
                 var balanceBegin = account.Balance;
 
                 if (transaction.Type == TransactionType.Credit)
