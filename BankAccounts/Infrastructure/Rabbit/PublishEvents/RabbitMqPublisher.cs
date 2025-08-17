@@ -32,9 +32,25 @@ namespace BankAccounts.Infrastructure.Rabbit.PublishEvents
                 UserName = _settings.UserName,
                 Password = _settings.Password,
             };
+            const int maxAttempts = 10;
+            int attempts = 0;
 
-            _connection = await factory.CreateConnectionAsync(cancellationToken);
-            _channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
+            while (attempts < maxAttempts && !cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    _connection = await factory.CreateConnectionAsync(cancellationToken);
+                    _channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
+                    _logger.LogInformation("RabbitMQ connected successfully");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    attempts++;
+                    _logger.LogWarning(ex, "RabbitMQ connection attempt {Attempt}/{MaxAttempts} failed. Retrying in 2s...", attempts, maxAttempts);
+                    await Task.Delay(2000, cancellationToken);
+                }
+            }
         }
 
         /// <summary>

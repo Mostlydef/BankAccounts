@@ -72,7 +72,7 @@ namespace BankAccountsTests
                             opts.HostName = _rabbitContainer.Hostname;
                             opts.UserName = "admin";
                             opts.Password = "admin";
-                            opts.ExchangeName = "account.event"; 
+                            opts.ExchangeName = "account.event";
                         });
 
                         services.AddHostedService<OutboxDispatcher>();
@@ -108,6 +108,33 @@ namespace BankAccountsTests
         [Fact]
         public async Task OutboxPublishesAfterFailure()
         {
+            var factory = new ConnectionFactory()
+            {
+                HostName = _rabbitContainer.Hostname,
+                UserName = "admin",
+                Password = "admin"
+            };
+            await using var connection = await factory.CreateConnectionAsync();
+            await using var channel = await connection.CreateChannelAsync();
+
+            await channel.ExchangeDeclareAsync(
+                exchange: "account.event",
+                type: ExchangeType.Topic,  
+                durable: true
+            );
+            await channel.QueueDeclareAsync(
+                queue: "account.crm",
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null
+            );
+            await channel.QueueBindAsync(
+                queue: "account.crm",
+                exchange: "account.event",
+                routingKey: "account.*"  
+            );
+
             // Создаём аккаунт и выполняем транзакцию, которая публикует событие
             var ownerId = Guid.NewGuid();
             var account = await CreateAccountAsync(ownerId);
@@ -135,19 +162,12 @@ namespace BankAccountsTests
             await Task.Delay(3000);
 
             // проверяем, что сообщение появилось в очереди
-            var factory = new ConnectionFactory()
-            {
-                HostName = _rabbitContainer.Hostname,
-                UserName = "admin",
-                Password = "admin"
-            };
 
-            await using var connection = await factory.CreateConnectionAsync();
-            await using var channel = await connection.CreateChannelAsync();
-            var result =  await channel.BasicGetAsync("account.crm", true);
+
+            var result = await channel.BasicGetAsync("account.crm", true);
             Assert.NotNull(result);
             Assert.NotNull(createdTransaction);
-            
+
             var body = System.Text.Encoding.UTF8.GetString(result.Body.ToArray());
 
             Assert.Contains("account-service", body);
@@ -228,7 +248,7 @@ namespace BankAccountsTests
             await using var channel = await connection.CreateChannelAsync();
             await channel.ExchangeDeclareAsync(
                 exchange: "account.event",
-                type: ExchangeType.Topic,  // или Fanout, если нужен broadcat
+                type: ExchangeType.Topic, 
                 durable: true
             );
             await channel.QueueDeclareAsync(
@@ -241,7 +261,7 @@ namespace BankAccountsTests
             await channel.QueueBindAsync(
                 queue: "account.antifraud",
                 exchange: "account.event",
-                routingKey: "client.*"  // пустой ключ для fanout
+                routingKey: "client.*"  
             );
 
             // Arrange: создать два счёта с балансом по 1000
@@ -264,7 +284,7 @@ namespace BankAccountsTests
             freezeResponse.EnsureSuccessStatusCode();
 
             // ждем, пока Outbox успешно опубликует событие
-            await Task.Delay(30000);
+            await Task.Delay(20000);
 
             // Act: пробуем списать деньги
             var response = await _client.PostAsJsonAsync("/Transactions/Transfer", transactionDto);
