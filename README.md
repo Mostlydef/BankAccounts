@@ -27,6 +27,11 @@
 
 Доступен по `http://localhost:15672`
 
+Вход в RabbitMq:
+
+- **Username:** `admin`
+- **Password:** `admin`
+
 ## Tests
 
 Запуск тестов по пути `./BankAccountsTests` `dotnet test`
